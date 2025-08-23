@@ -334,7 +334,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
   const rowVirtualizer = useVirtualizer({
     count: consoleMessages.length,
     getScrollElement: () => viewportRef.current as HTMLElement | null,
-    estimateSize: () => 80, // 72px for content + 8px for spacing
+    estimateSize: () => 72, // Just the content height
     overscan: 10,
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -620,14 +620,17 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         top: 0,
                         left: 0,
                         width: '100%',
-                        transform: `translateY(${vItem.start + (vItem.index * 8)}px)`,
+                        transform: `translateY(${vItem.start}px)`,
                       }}
-                      className={`flex items-start gap-3 p-2 rounded ${
-                        message.direction === 'out' ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-green-50 dark:bg-green-950/20'
-                      } ${message.isPrevious ? 'opacity-50' : ''}`}
-                      role="log"
-                      aria-label={accessibleLabel}
+                      className="mb-2"
                     >
+                      <div
+                        className={`flex items-start gap-3 p-2 rounded ${
+                          message.direction === 'out' ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-green-50 dark:bg-green-950/20'
+                        } ${message.isPrevious ? 'opacity-50' : ''}`}
+                        role="log"
+                        aria-label={accessibleLabel}
+                      >
                       <div className={`flex-shrink-0 ${getDirectionColor(message.direction, message.isPrevious)}`}>
                         {getDirectionIcon(message.direction)}
                       </div>
@@ -656,7 +659,8 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         </div>
                       </div>
                     </div>
-                  );
+                  </div>
+                );
                 })}
               </div>
             )}
