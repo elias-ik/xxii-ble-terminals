@@ -287,8 +287,9 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
   const rowVirtualizer = useVirtualizer({
     count: consoleMessages.length,
     getScrollElement: () => viewportRef.current as HTMLElement | null,
-    estimateSize: () => 72, // Just the content height
-    overscan: 10,
+    estimateSize: () => 80, // closer to average height for smoother backscroll
+    overscan: 20,
+    getItemKey: (index) => (consoleMessages[index]?.id ?? index),
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
@@ -539,7 +540,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                 <p className="text-xs">Send a message or subscribe to notifications</p>
               </div>
             ) : (
-              <div className="relative w-full" style={{ height: totalSize + Math.max(0, consoleMessages.length - 1) * ROW_GAP_PX }}>
+              <div className="relative w-full" style={{ height: totalSize }}>
                 {virtualItems.map((vItem) => {
                   const message = consoleMessages[vItem.index];
                   const accessibleLabel = generateAccessibleLabel('console-entry', message);
@@ -553,7 +554,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         top: 0,
                         left: 0,
                         width: '100%',
-                        transform: `translateY(${vItem.start + vItem.index * ROW_GAP_PX}px)`,
+                        transform: `translateY(${vItem.start}px)`,
                       }}
                       className=""
                     >
@@ -572,6 +573,8 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         getFormatBadgeColor={getFormatBadgeColor}
                         accessibleLabel={accessibleLabel}
                       />
+                      {/* Spacer included in measured element for consistent gaps */}
+                      <div style={{ height: ROW_GAP_PX }} />
                   </div>
                 );
                 })}
