@@ -55,20 +55,23 @@ const activeConnections = new Map<string, {
 async function listRootServices(server: any): Promise<any[]> {
   // Union of primary services and all services (if supported), dedup by uuid
   const byUuid = new Map<string, any>();
+  const addServicesToMap = (list: any) => {
+    if (Array.isArray(list)) {
+      for (const s of list) {
+        if (s?.uuid && !byUuid.has(s.uuid)) byUuid.set(s.uuid, s);
+      }
+    }
+  };
   try {
     if (typeof server.getPrimaryServices === 'function') {
       const prim = await server.getPrimaryServices();
-      if (Array.isArray(prim)) {
-        for (const s of prim) if (s?.uuid && !byUuid.has(s.uuid)) byUuid.set(s.uuid, s);
-      }
+      addServicesToMap(prim);
     }
   } catch {}
   try {
     if (typeof server.getServices === 'function') {
       const all = await server.getServices();
-      if (Array.isArray(all)) {
-        for (const s of all) if (s?.uuid && !byUuid.has(s.uuid)) byUuid.set(s.uuid, s);
-      }
+      addServicesToMap(all);
     }
   } catch {}
   return Array.from(byUuid.values());
