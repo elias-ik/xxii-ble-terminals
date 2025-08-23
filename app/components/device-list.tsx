@@ -175,16 +175,29 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
 
       {/* Search */}
       <div className="p-2 border-b">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search devices..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            onKeyDown={handleSearchKeyDown}
-            className="pl-9 h-8 text-sm"
-            aria-label="Search devices"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search devices..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              onKeyDown={handleSearchKeyDown}
+              className="pl-9 h-8 text-sm"
+              aria-label="Search devices"
+            />
+          </div>
+          <Button
+            onClick={handleRescan}
+            disabled={isScanning}
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            aria-label="Scan for devices"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+            Rescan
+          </Button>
         </div>
       </div>
 

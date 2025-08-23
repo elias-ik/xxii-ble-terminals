@@ -75,15 +75,6 @@ function HomeContent() {
           </div>
           
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={scan}
-              disabled={isScanning}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-              Rescan
-            </Button>
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4" />
             </Button>
