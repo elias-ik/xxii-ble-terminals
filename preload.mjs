@@ -1,6 +1,6 @@
 // TypeScript support is now handled by the ES module loader
 
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -31,22 +31,7 @@ async function initializePreload() {
     };
   }
 
-  // Storage (electron-store) with safe fallback to in-memory store if needed
-  let Store;
-  try {
-    ({ default: Store } = await import('electron-store'));
-  } catch (err) {
-    console.warn('Failed to import electron-store in preload, using in-memory fallback:', err);
-    const mem = new Map();
-    Store = class {
-      constructor() {}
-      get(key, defVal) { return mem.has(key) ? mem.get(key) : defVal; }
-      set(key, value) { mem.set(key, value); }
-      delete(key) { mem.delete(key); }
-      clear() { mem.clear(); }
-      has(key) { return mem.has(key); }
-    };
-  }
+  // Storage via IPC to main process (no direct electron-store usage in preload)
 
   // Small helper to manage add/remove listener mapping
   function createEventRelay() {
@@ -178,13 +163,12 @@ async function initializePreload() {
   });
 
   // Expose simple key/value storage API
-  const store = new Store({ name: 'app-settings' });
   contextBridge.exposeInMainWorld('storageAPI', {
-    get: (key, defaultValue) => Promise.resolve(store.get(key, defaultValue)),
-    set: (key, value) => Promise.resolve(store.set(key, value)),
-    delete: (key) => Promise.resolve(store.delete(key)),
-    clear: () => Promise.resolve(store.clear()),
-    has: (key) => Promise.resolve(store.has(key)),
+    get: (key, defaultValue) => ipcRenderer.invoke('storage:get', key, defaultValue),
+    set: (key, value) => ipcRenderer.invoke('storage:set', key, value),
+    delete: (key) => ipcRenderer.invoke('storage:delete', key),
+    clear: () => ipcRenderer.invoke('storage:clear'),
+    has: (key) => ipcRenderer.invoke('storage:has', key),
   });
 
   // Minimal Electron info
@@ -192,6 +176,14 @@ async function initializePreload() {
     platform: process.platform,
     versions: process.versions,
     isElectron: true,
+  });
+
+  // Surface runtime errors to main process console
+  window.addEventListener('error', (event) => {
+    console.error('Renderer error:', event.error || event.message);
+  });
+  window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
   });
 
   console.log('Preload initialized with ts-node; BLE client bridged');

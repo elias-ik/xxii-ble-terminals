@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
+import Store from 'electron-store';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,11 +9,37 @@ const __dirname = path.dirname(__filename);
 // Better development detection
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
 
+// Initialize app-wide store in the main process
+const appStore = new Store({ name: 'app-settings' });
+
+function registerIpcHandlers() {
+  // Storage IPC (all async)
+  ipcMain.handle('storage:get', (_event, key, defaultValue) => {
+    return appStore.get(key, defaultValue);
+  });
+  ipcMain.handle('storage:set', (_event, key, value) => {
+    appStore.set(key, value);
+    return true;
+  });
+  ipcMain.handle('storage:delete', (_event, key) => {
+    appStore.delete(key);
+    return true;
+  });
+  ipcMain.handle('storage:clear', () => {
+    appStore.clear();
+    return true;
+  });
+  ipcMain.handle('storage:has', (_event, key) => {
+    return appStore.has(key);
+  });
+}
+
 function createWindow() {
   // Create the browser window
   let mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    backgroundColor: '#111111',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -45,6 +72,10 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, 'build', 'client', 'index.html'));
   }
 
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+  });
+
   // Handle window closed
   mainWindow.on('closed', () => {
     // Dereference the window object
@@ -53,7 +84,10 @@ function createWindow() {
 }
 
 // This method will be called when Electron has finished initialization
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  registerIpcHandlers();
+  createWindow();
+});
 
 // Quit when all windows are closed
 app.on('window-all-closed', () => {
