@@ -200,6 +200,9 @@ export const webBluetoothClient: BLEClient = {
       const seenServiceUuids = new Set<string>();
       const queue: any[] = await listRootServices(server);
       log.info('connect(): discovered root services (union primary+all)', queue?.length);
+      if (!queue || queue.length === 0) {
+        log.warn('connect(): no services discovered. Ensure device exposes services and optionalServices includes needed UUIDs when requesting permissions.');
+      }
       try {
         log.info('connect(): root service UUIDs', Array.isArray(queue) ? queue.map((s: any) => s?.uuid) : []);
       } catch {}

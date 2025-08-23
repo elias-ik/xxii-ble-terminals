@@ -99,3 +99,8 @@ After every edit process, commit what you just did to git, dont change branches,
 ## dont change stuff your not asked to, like adding features or fixing bugs
 
 you dont need to run `npm run electron:dev:simple` or whatever i have the project start almost always in "watch"/hot reload mode
+
+
+this app uses a node implementation of SimpleBle called webbluetooth
+https://github.com/thegecko/webbluetooth
+
