@@ -108,6 +108,16 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     return text.length > maxChars ? text.slice(0, maxChars) + ' ..' : text;
   };
 
+  const truncateMiddle = (text: string, maxChars: number = 22) => {
+    if (!text) return '';
+    if (text.length <= maxChars) return text;
+    const ellipsis = '...';
+    const keep = Math.max(0, maxChars - ellipsis.length);
+    const front = Math.ceil(keep / 2);
+    const back = Math.floor(keep / 2);
+    return text.slice(0, front) + ellipsis + text.slice(text.length - back);
+  };
+
   const getConnectionBadge = (device: any) => {
     const base = 'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] h-5 border';
     switch (device.connectionStatus) {
@@ -261,7 +271,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
 
                     {/* Line 2: full MAC, RSSI + strength */}
                     <div className="mt-0.5 flex items-center justify-between text-[11px] text-muted-foreground leading-tight">
-                      <span className="font-mono truncate">{device.address}</span>
+                      <span className="font-mono">{truncateMiddle(device.address || '')}</span>
                       <span className="flex items-center gap-1">
                         <span className={getRssiColor(device.rssi)}>{device.rssi}dBm</span>
                         <span>({getRssiStrength(device.rssi)})</span>
