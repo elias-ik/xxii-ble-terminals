@@ -74,6 +74,12 @@ async function listRootServices(server: any): Promise<any[]> {
       addServicesToMap(all);
     }
   } catch {}
+  try {
+    if (typeof server.getIncludedServices === 'function') {
+      const all = await server.getIncludedServices();
+      addServicesToMap(all);
+    }
+  } catch {}
   return Array.from(byUuid.values());
 }
 
@@ -135,7 +141,7 @@ export const webBluetoothClient: BLEClient = {
                 id,
                 name: deviceName,
                 address: id,
-                rssi: -60,
+                rssi: device?.rssi || -60,
                 connected: false,
                 lastSeen: new Date(),
                 previouslyConnected: false,
@@ -148,8 +154,8 @@ export const webBluetoothClient: BLEClient = {
           }
         } as any);
         try {
-          // Will scan and invoke deviceFound; we ignore the returned device
-          await (bt as any).requestDevice({ acceptAllDevices: true, optionalServices: ['device_information'] });
+          // Will scan and invoke deviceFound; request with no optionalServices to avoid service access limits
+          await (bt as any).requestDevice({ acceptAllDevices: true, optionalServices: [] });
         } catch (e) {
           // expected if no selection occurs; ignore
         }
