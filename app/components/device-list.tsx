@@ -129,18 +129,28 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     }
   };
 
-  const handleRescan = () => {
-    scan();
+  const handleRescan = async () => {
+    try {
+      const ble = (window as any)?.bleAPI;
+      if (ble?.scan) {
+        await ble.scan();
+      } else {
+        // Fallback to store action
+        scan();
+      }
+    } catch (e) {
+      // noop – errors are emitted via events
+    }
   };
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
   };
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
       setSearchQuery('');
-      e.currentTarget.blur();
+      (e.currentTarget as HTMLInputElement).blur();
     }
   };
 
