@@ -63,7 +63,8 @@
     "tailwind-merge": "^3.3.1",
     "vaul": "^1.1.2",
     "zod": "^4.0.17",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "electron-store": "^9.2.0"
   },
   "devDependencies": {
     "@react-router/dev": "^7.7.1",

@@ -12,6 +12,8 @@ async function initializePreload() {
   // Import the shared BLE client directly from TypeScript
   // Note: path is relative to project root where preload.mjs lives
   const { bleClient } = await import('./app/lib/ble/client.ts');
+  // Storage (electron-store)
+  const { default: Store } = await import('electron-store');
 
   // Small helper to manage add/remove listener mapping
   function createEventRelay() {
@@ -140,6 +142,16 @@ async function initializePreload() {
     removeCharacteristicValueListener: relay.removeCharacteristicValueListener,
     removeSubscriptionChangedListener: relay.removeSubscriptionChangedListener,
     removeScanStatusListener: relay.removeScanStatusListener,
+  });
+
+  // Expose simple key/value storage API
+  const store = new Store({ name: 'app-settings' });
+  contextBridge.exposeInMainWorld('storageAPI', {
+    get: (key, defaultValue) => Promise.resolve(store.get(key, defaultValue)),
+    set: (key, value) => Promise.resolve(store.set(key, value)),
+    delete: (key) => Promise.resolve(store.delete(key)),
+    clear: () => Promise.resolve(store.clear()),
+    has: (key) => Promise.resolve(store.has(key)),
   });
 
   // Minimal Electron info
