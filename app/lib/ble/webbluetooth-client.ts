@@ -52,6 +52,23 @@ const activeConnections = new Map<string, {
   uiServices?: Record<string, Service>;
 }>();
 
+async function listPrimaryServices(server: any): Promise<any[]> {
+  // Prefer standard getPrimaryServices; fall back to getServices if available
+  try {
+    if (typeof server.getPrimaryServices === 'function') {
+      const s = await server.getPrimaryServices();
+      if (Array.isArray(s) && s.length) return s;
+    }
+  } catch {}
+  try {
+    if (typeof server.getServices === 'function') {
+      const s = await server.getServices();
+      if (Array.isArray(s) && s.length) return s;
+    }
+  } catch {}
+  return [];
+}
+
 async function getNativeService(deviceId: string, serviceId: string) {
   const meta = activeConnections.get(deviceId);
   if (!meta) throw new Error('Not connected');
@@ -176,7 +193,7 @@ export const webBluetoothClient: BLEClient = {
       const nativeChars = new Map<string, any>();
 
       const seenServiceUuids = new Set<string>();
-      const queue: any[] = await server.getPrimaryServices();
+      const queue: any[] = await listPrimaryServices(server);
       log.info('connect(): discovered primary services', queue?.length);
 
       while (queue.length > 0) {
