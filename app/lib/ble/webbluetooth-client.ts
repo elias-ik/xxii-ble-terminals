@@ -170,32 +170,57 @@ export const webBluetoothClient: BLEClient = {
       log.info('connect(): using cached device', { id: device.id, name: device.name });
       const server = await device.gatt!.connect();
       log.info('connect(): gatt connected');
-      const services = await server.getPrimaryServices();
-      log.info('connect(): discovered services', services?.length);
-
+      // Discover primary and included services (BFS), then enumerate characteristics for each
       const svcMap: Record<string, Service> = {};
       const nativeServices = new Map<string, any>();
       const nativeChars = new Map<string, any>();
-      for (const svc of services) {
+
+      const seenServiceUuids = new Set<string>();
+      const queue: any[] = await server.getPrimaryServices();
+      log.info('connect(): discovered primary services', queue?.length);
+
+      while (queue.length > 0) {
+        const svc = queue.shift();
+        if (!svc || seenServiceUuids.has(svc.uuid)) continue;
+        seenServiceUuids.add(svc.uuid);
         nativeServices.set(svc.uuid, svc);
-        const chars = await svc.getCharacteristics();
-        const chMap: Record<string, Characteristic> = {};
-        for (const ch of chars) {
-          nativeChars.set(key(device.id || deviceId, svc.uuid, ch.uuid), ch);
-          const props = ch.properties;
-          chMap[ch.uuid] = {
-            uuid: ch.uuid,
-            name: ch.uuid,
-            capabilities: {
-              read: !!props.read,
-              write: !!props.write,
-              writeNoResp: !!props.writeWithoutResponse,
-              notify: !!props.notify,
-              indicate: !!props.indicate,
-            },
-            subscribed: false,
-          };
+
+        // Queue included services, if any
+        try {
+          const included = await svc.getIncludedServices();
+          if (Array.isArray(included)) {
+            for (const inc of included) {
+              if (inc && !seenServiceUuids.has(inc.uuid)) queue.push(inc);
+            }
+          }
+        } catch (e) {
+          // Some stacks may not support included services; ignore
         }
+
+        // Enumerate characteristics for this service
+        const chMap: Record<string, Characteristic> = {};
+        try {
+          const chars = await svc.getCharacteristics();
+          for (const ch of chars) {
+            nativeChars.set(key(device.id || deviceId, svc.uuid, ch.uuid), ch);
+            const props = ch.properties || {};
+            chMap[ch.uuid] = {
+              uuid: ch.uuid,
+              name: ch.uuid,
+              capabilities: {
+                read: !!props.read,
+                write: !!props.write,
+                writeNoResp: !!props.writeWithoutResponse,
+                notify: !!props.notify,
+                indicate: !!props.indicate,
+              },
+              subscribed: false,
+            };
+          }
+        } catch (e) {
+          // If characteristics enumeration fails for a service, continue with others
+        }
+
         svcMap[svc.uuid] = { uuid: svc.uuid, name: svc.uuid, characteristics: chMap } as Service;
       }
 
