@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Signal, Wifi, WifiOff, Clock, AlertCircle, CheckCircle, XCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { Signal, Wifi, WifiOff, Clock, AlertCircle, CheckCircle, XCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useBLEStore, type Device } from "@/lib/ble-store";
 import { TerminalConsole } from "./terminal-console-simple";
 import { useEffect, useState } from "react";
@@ -15,9 +15,14 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
   const {
     connect,
     disconnect,
+    unsubscribeAll,
+    setDeviceUI,
+    markConsoleAsPrevious,
     connections,
     devices
   } = useBLEStore();
+
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   const connection = connections[device.id] || null;
   const connectedDevices = Object.values(devices).filter(d => d.connected);
@@ -87,10 +92,31 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
   };
 
   const handleDisconnect = async () => {
-    await disconnect(device.id);
+    setIsDisconnecting(true);
+    try {
+      // First unsubscribe from all active characteristics
+      await unsubscribeAll(device.id);
+      // Mark all console entries as previous
+      markConsoleAsPrevious(device.id);
+      // Clear device UI state (reset all selections)
+      setDeviceUI(device.id, {
+        selectedServiceId: null,
+        selectedCharacteristicId: null,
+        selectedReadKeys: [],
+        selectedNotifyKeys: [],
+        selectedIndicateKeys: [],
+        writeMode: null
+      });
+      // Then disconnect
+      await disconnect(device.id);
+    } catch (error) {
+      console.error('Disconnect failed:', error);
+    } finally {
+      setIsDisconnecting(false);
+    }
   };
 
-  const isActionDisabled = device.connectionStatus === 'connecting' || device.connectionStatus === 'disconnecting';
+  const isActionDisabled = device.connectionStatus === 'connecting' || device.connectionStatus === 'disconnecting' || isDisconnecting;
   const [expanded, setExpanded] = useState(!device.connected);
 
   // Auto-collapse when a device transitions to connected; expand when disconnected
@@ -103,7 +129,19 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
   // If device is connected, show terminal console
   if (device.connected) {
     return (
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col relative">
+        {/* Loading overlay when disconnecting */}
+        {isDisconnecting && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 p-6 rounded-lg bg-card border shadow-lg">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <div className="text-center">
+                <p className="font-medium">Disconnecting...</p>
+                <p className="text-sm text-muted-foreground">Unsubscribing from characteristics</p>
+              </div>
+            </div>
+          </div>
+        )}
         {/* Compact one-line summary bar with expand toggle */}
         <div className="px-3 py-2 border-b flex items-center gap-3 text-sm">
           {getConnectionStatusIcon()}
@@ -114,8 +152,12 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
           </span>
           <span className="ml-2">{getConnectionStatusBadge()}</span>
           <Button onClick={handleDisconnect} disabled={isActionDisabled} variant="destructive" size="sm">
-            <WifiOff className="h-4 w-4 mr-1" />
-            Disconnect
+            {isDisconnecting ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <WifiOff className="h-4 w-4 mr-1" />
+            )}
+            {isDisconnecting ? 'Disconnecting...' : 'Disconnect'}
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)} aria-label={expanded ? 'Collapse details' : 'Expand details'}>
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

@@ -197,8 +197,9 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
     return direction === 'out' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />;
   };
 
-  const getDirectionColor = (direction: 'in' | 'out') => {
-    return direction === 'out' ? 'text-blue-600' : 'text-green-600';
+  const getDirectionColor = (direction: 'in' | 'out', isPrevious?: boolean) => {
+    const baseColor = direction === 'out' ? 'text-blue-600' : 'text-green-600';
+    return isPrevious ? `${baseColor} opacity-50` : baseColor;
   };
 
   const getFormatBadgeColor = (format: string) => {
@@ -243,7 +244,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
   }
 
   // Dynamically wrap text based on available width
-  function WrappedText({ text }: { text: string }) {
+  function WrappedText({ text, isPrevious }: { text: string; isPrevious?: boolean }) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [maxChars, setMaxChars] = useState<number>(80);
 
@@ -279,7 +280,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
 
     const lines = wrapTextToLines(text, maxChars);
     return (
-      <div ref={containerRef} className="text-sm font-mono whitespace-pre-wrap break-words w-full">
+      <div ref={containerRef} className={`text-sm font-mono whitespace-pre-wrap break-words w-full ${isPrevious ? 'opacity-50' : ''}`}>
         {lines.map((ln, i) => (
           <div key={i}>{ln}</div>
         ))}
@@ -333,7 +334,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
   const rowVirtualizer = useVirtualizer({
     count: consoleMessages.length,
     getScrollElement: () => viewportRef.current as HTMLElement | null,
-    estimateSize: () => 72,
+    estimateSize: () => 72 + 8, // 72px for content + 8px for spacing
     overscan: 10,
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
@@ -621,29 +622,29 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         width: '100%',
                         transform: `translateY(${vItem.start}px)`,
                       }}
-                      className={`flex items-start gap-3 p-2 rounded ${
+                      className={`flex items-start gap-3 p-2 rounded mb-2 ${
                         message.direction === 'out' ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-green-50 dark:bg-green-950/20'
-                      }`}
+                      } ${message.isPrevious ? 'opacity-50' : ''}`}
                       role="log"
                       aria-label={accessibleLabel}
                     >
-                      <div className={`flex-shrink-0 ${getDirectionColor(message.direction)}`}>
+                      <div className={`flex-shrink-0 ${getDirectionColor(message.direction, message.isPrevious)}`}>
                         {getDirectionIcon(message.direction)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs text-muted-foreground">
+                          <span className={`text-xs ${message.isPrevious ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                             {message.timestamp.toLocaleTimeString()}
                           </span>
-                          <Badge variant="secondary" className={getFormatBadgeColor(message.renderFormatAtTime)}>
+                          <Badge variant="secondary" className={`${getFormatBadgeColor(message.renderFormatAtTime)} ${message.isPrevious ? 'opacity-50' : ''}`}>
                             {message.renderFormatAtTime}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
+                          <span className={`text-xs ${message.isPrevious ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}>
                             {message.characteristicId}
                           </span>
                         </div>
                         <div className="flex items-start justify-between gap-3 w-full">
-                          <WrappedText text={formatData(message.rawBytes, message.renderFormatAtTime)} />
+                          <WrappedText text={formatData(message.rawBytes, message.renderFormatAtTime)} isPrevious={message.isPrevious} />
                           <Button
                             variant="ghost"
                             size="sm"

@@ -60,6 +60,7 @@ export interface ConsoleEntry {
   characteristicId: string;
   serviceId: string;
   deviceId: string;
+  isPrevious?: boolean;
 }
 
 export interface DeviceSettings {
@@ -103,6 +104,7 @@ export type BLEAction =
   // Console Management
   | { type: 'CONSOLE_ENTRY_ADDED'; payload: ConsoleEntry }
   | { type: 'CONSOLE_CLEARED'; payload: { deviceId: string } }
+  | { type: 'CONSOLE_MARKED_AS_PREVIOUS'; payload: { deviceId: string } }
   
   // Settings Management
   | { type: 'DEVICE_SETTINGS_UPDATED'; payload: { deviceId: string; settings: DeviceSettings } }
@@ -324,6 +326,17 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
       newState.consoleBuffers = {
         ...newState.consoleBuffers,
         [action.payload.deviceId]: []
+      };
+      break;
+      
+    case 'CONSOLE_MARKED_AS_PREVIOUS':
+      const deviceConsoleToMark = newState.consoleBuffers[action.payload.deviceId] || [];
+      newState.consoleBuffers = {
+        ...newState.consoleBuffers,
+        [action.payload.deviceId]: deviceConsoleToMark.map(entry => ({
+          ...entry,
+          isPrevious: true
+        }))
       };
       break;
       
@@ -857,10 +870,49 @@ export const useBLEStore = create<BLEState>()(
           console.error('Unsubscribe failed:', error);
         }
       },
+
+      // Get all active subscriptions for a device
+      getActiveSubscriptions: (deviceId: string) => {
+        const state = get();
+        const deviceUI = selectors.getDeviceUI(state, deviceId);
+        const subscriptions: Array<{ serviceId: string; characteristicId: string }> = [];
+        
+        // Parse notify keys
+        (deviceUI.selectedNotifyKeys || []).forEach(key => {
+          const [serviceId, characteristicId] = key.split(':');
+          if (serviceId && characteristicId) {
+            subscriptions.push({ serviceId, characteristicId });
+          }
+        });
+        
+        // Parse indicate keys
+        (deviceUI.selectedIndicateKeys || []).forEach(key => {
+          const [serviceId, characteristicId] = key.split(':');
+          if (serviceId && characteristicId) {
+            subscriptions.push({ serviceId, characteristicId });
+          }
+        });
+        
+        return subscriptions;
+      },
+
+      // Unsubscribe from all active characteristics for a device
+      unsubscribeAll: async (deviceId: string) => {
+        const subscriptions = get().getActiveSubscriptions(deviceId);
+        const promises = subscriptions.map(({ serviceId, characteristicId }) => 
+          get().unsubscribe(deviceId, serviceId, characteristicId)
+        );
+        await Promise.all(promises);
+      },
       
       clearConsole: (deviceId: string) => {
         const { dispatch } = get();
         dispatch({ type: 'CONSOLE_CLEARED', payload: { deviceId } });
+      },
+
+      markConsoleAsPrevious: (deviceId: string) => {
+        const { dispatch } = get();
+        dispatch({ type: 'CONSOLE_MARKED_AS_PREVIOUS', payload: { deviceId } });
       },
       
       setDeviceSettings: (deviceId: string, settings: Partial<DeviceSettings>) => {
