@@ -59,7 +59,7 @@ export const webBluetoothClient: BLEClient = {
           deviceFound: (device: any, selectFn: () => void) => {
             const id = device?.id || device?.address || device?.name || String(Math.random());
             if (!seen.has(id)) {
-              const rawName = device?.name || 'BLE Device';
+              const rawName = device?.name || 'Generic BLE Device';
               const unsupportedRegex = /Unknown or Unsupported Device (.*)/;
               const deviceName = unsupportedRegex.test(device?.name ?? '') ? 'Unsupported' : rawName;
               // Cache the full device object for later connect()
