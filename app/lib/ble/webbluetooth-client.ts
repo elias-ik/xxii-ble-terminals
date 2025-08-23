@@ -33,6 +33,45 @@ const subscriptions = new Map<string, () => void>();
 // Cache of discovered devices during scan to avoid re-requesting on connect
 const discoveredDevices = new Map<string, any>();
 
+// Lazy-load the webbluetooth Bluetooth constructor once
+let BluetoothCtor: any | null = null;
+async function getBluetoothCtor() {
+  if (!BluetoothCtor) {
+    const mod = await import('webbluetooth');
+    BluetoothCtor = (mod as any).Bluetooth;
+  }
+  return BluetoothCtor;
+}
+
+// Active connections cache: keep native server/services/characteristics to reuse across calls
+const activeConnections = new Map<string, {
+  device: any;
+  server: any;
+  services: Map<string, any>;
+  characteristics: Map<string, any>;
+  uiServices?: Record<string, Service>;
+}>();
+
+async function getNativeService(deviceId: string, serviceId: string) {
+  const meta = activeConnections.get(deviceId);
+  if (!meta) throw new Error('Not connected');
+  if (meta.services.has(serviceId)) return meta.services.get(serviceId);
+  const svc = await meta.server.getPrimaryService(serviceId);
+  meta.services.set(serviceId, svc);
+  return svc;
+}
+
+async function getNativeCharacteristic(deviceId: string, serviceId: string, characteristicId: string) {
+  const meta = activeConnections.get(deviceId);
+  if (!meta) throw new Error('Not connected');
+  const keyId = key(deviceId, serviceId, characteristicId);
+  if (meta.characteristics.has(keyId)) return meta.characteristics.get(keyId);
+  const svc = await getNativeService(deviceId, serviceId);
+  const ch = await svc.getCharacteristic(characteristicId);
+  meta.characteristics.set(keyId, ch);
+  return ch;
+}
+
 function key(deviceId: string, serviceId: string, characteristicId: string) {
   return `${deviceId}|${serviceId}|${characteristicId}`;
 }
@@ -43,7 +82,7 @@ export const webBluetoothClient: BLEClient = {
   async scan() {
     try {
       emitter.emit('scanStatus', { status: 'scanning' });
-      const { Bluetooth } = await import('webbluetooth');
+      const Bluetooth = await getBluetoothCtor();
 
       const seen = new Set<string>();
       let lastFoundAt = Date.now();
@@ -109,6 +148,19 @@ export const webBluetoothClient: BLEClient = {
   async connect(deviceId: string) {
     try {
       emitter.emit('connectionChanged', { deviceId, state: 'connecting' });
+      // If already connected, re-emit connection with cached UI services
+      const existing = activeConnections.get(deviceId);
+      if (existing?.server?.connected) {
+        const connection: Connection = {
+          deviceId,
+          connected: true,
+          services: existing.uiServices || {},
+          connectedAt: new Date()
+        } as any;
+        emitter.emit('connectionChanged', { deviceId, state: 'connected', connection });
+        return;
+      }
+
       // Use cached device from scan to avoid re-requesting
       const device = discoveredDevices.get(deviceId);
       if (!device) {
@@ -122,10 +174,14 @@ export const webBluetoothClient: BLEClient = {
       log.info('connect(): discovered services', services?.length);
 
       const svcMap: Record<string, Service> = {};
+      const nativeServices = new Map<string, any>();
+      const nativeChars = new Map<string, any>();
       for (const svc of services) {
+        nativeServices.set(svc.uuid, svc);
         const chars = await svc.getCharacteristics();
         const chMap: Record<string, Characteristic> = {};
         for (const ch of chars) {
+          nativeChars.set(key(device.id || deviceId, svc.uuid, ch.uuid), ch);
           const props = ch.properties;
           chMap[ch.uuid] = {
             uuid: ch.uuid,
@@ -143,6 +199,14 @@ export const webBluetoothClient: BLEClient = {
         svcMap[svc.uuid] = { uuid: svc.uuid, name: svc.uuid, characteristics: chMap } as Service;
       }
 
+      activeConnections.set(device.id || deviceId, {
+        device,
+        server,
+        services: nativeServices,
+        characteristics: nativeChars,
+        uiServices: svcMap,
+      });
+
       const connection: Connection = {
         deviceId: device.id || deviceId,
         connected: true,
@@ -158,7 +222,18 @@ export const webBluetoothClient: BLEClient = {
   async disconnect(deviceId: string) {
     emitter.emit('connectionChanged', { deviceId, state: 'disconnecting' });
     try {
-      // There is no direct global disconnect via webbluetooth API reference saved here; UI should track server
+      const meta = activeConnections.get(deviceId);
+      if (meta?.server?.connected) {
+        try { meta.server.disconnect(); } catch {}
+      }
+      // Clear cached subscriptions for this device
+      for (const k of Array.from(subscriptions.keys())) {
+        if (k.startsWith(`${deviceId}|`)) {
+          try { const stop = subscriptions.get(k); stop && (await stop()); } catch {}
+          subscriptions.delete(k);
+        }
+      }
+      activeConnections.delete(deviceId);
       emitter.emit('connectionChanged', { deviceId, state: 'disconnected' });
     } catch (e) {
       log.warn('disconnect() swallow error', e);
@@ -167,12 +242,7 @@ export const webBluetoothClient: BLEClient = {
   },
   async read(deviceId, serviceId, characteristicId) {
     try {
-      const { bluetooth } = await import('webbluetooth');
-      log.info('read(): requestDevice...', { serviceId, characteristicId });
-      const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [serviceId] });
-      const server = await device.gatt!.connect();
-      const service = await server.getPrimaryService(serviceId);
-      const ch = await service.getCharacteristic(characteristicId);
+      const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
       const value = await ch.readValue();
       const txt = new TextDecoder().decode(value.buffer);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: txt, direction: 'read' });
@@ -182,12 +252,7 @@ export const webBluetoothClient: BLEClient = {
   },
   async write(deviceId, serviceId, characteristicId, data) {
     try {
-      const { bluetooth } = await import('webbluetooth');
-      log.info('write(): requestDevice...', { serviceId, characteristicId });
-      const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [serviceId] });
-      const server = await device.gatt!.connect();
-      const service = await server.getPrimaryService(serviceId);
-      const ch = await service.getCharacteristic(characteristicId);
+      const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
       const enc = new TextEncoder().encode(data);
       await ch.writeValue(enc);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'write' });
@@ -197,12 +262,7 @@ export const webBluetoothClient: BLEClient = {
   },
   async subscribe(deviceId, serviceId, characteristicId) {
     try {
-      const { bluetooth } = await import('webbluetooth');
-      log.info('subscribe(): requestDevice...', { serviceId, characteristicId });
-      const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [serviceId] });
-      const server = await device.gatt!.connect();
-      const service = await server.getPrimaryService(serviceId);
-      const ch = await service.getCharacteristic(characteristicId);
+      const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
       const listener = (ev: Event) => {
         const target = ev.target as any;
         const val = target?.value ? new TextDecoder().decode(target.value.buffer) : '';
