@@ -1,8 +1,8 @@
-import type { StorageClient } from './client';
+import type { Storage } from './types';
 
 const memory = new Map<string, unknown>();
 
-export const mockStorageClient: StorageClient = {
+export const memoryStorage: Storage = {
   async get(key, defaultValue) {
     return (memory.has(key) ? (memory.get(key) as any) : defaultValue) as any;
   },
