@@ -622,7 +622,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         width: '100%',
                         transform: `translateY(${vItem.start}px)`,
                       }}
-                      className="mb-2"
+                      className=""
                     >
                       <div
                         className={`flex items-start gap-3 p-2 rounded ${
@@ -658,6 +658,8 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                           </Button>
                         </div>
                       </div>
+                      {/* Spacer to create visual gap and be part of measured height */}
+                      <div style={{ height: 8 }} />
                     </div>
                   </div>
                 );
