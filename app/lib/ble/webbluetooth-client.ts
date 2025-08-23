@@ -6,7 +6,11 @@ type Handler<K extends keyof BLEEventMap> = (payload: BLEEventMap[K]) => void;
 class Emitter {
   private handlers: { [K in keyof BLEEventMap]?: Set<Handler<K>> } = {} as any;
   on<K extends keyof BLEEventMap>(event: K, handler: Handler<K>) {
-    const set = (this.handlers[event] ??= new Set());
+    let set = this.handlers[event] as Set<Handler<K>> | undefined;
+    if (!set) {
+      set = new Set<Handler<K>>();
+      (this.handlers as any)[event] = set as any;
+    }
     set.add(handler as any);
   }
   off<K extends keyof BLEEventMap>(event: K, handler: Handler<K>) {
@@ -53,12 +57,15 @@ export const webBluetoothClient: BLEClient = {
           deviceFound: (device: any, selectFn: () => void) => {
             const id = device?.id || device?.address || device?.name || String(Math.random());
             if (!seen.has(id)) {
+              const rawName = device?.name || 'BLE Device';
+              const unsupportedRegex = /Unknown or Unsupported Device (.*)/;
+              const deviceName = unsupportedRegex.test(device?.name ?? '') ? 'Unsupported' : rawName;
               seen.add(id);
               lastFoundAt = Date.now();
-              log.info('scan(): deviceFound', { id, name: device?.name });
+              log.info('scan(): deviceFound', { id, name: deviceName });
               emitter.emit('deviceDiscovered', {
                 id,
-                name: device?.name || 'BLE Device',
+                name: deviceName,
                 address: id,
                 rssi: -60,
                 connected: false,
@@ -84,8 +91,6 @@ export const webBluetoothClient: BLEClient = {
         await runOnce();
         const idleMs = Date.now() - lastFoundAt;
         const totalMs = Date.now() - startedAt;
-        log.info('scan(): idleMs', idleMs);
-        log.info('scan(): totalMs', totalMs);
         if (idleMs >= idleLimitMs || totalMs >= maxTotalMs) {
           keepGoing = false;
         }
@@ -193,8 +198,8 @@ export const webBluetoothClient: BLEClient = {
       const service = await server.getPrimaryService(serviceId);
       const ch = await service.getCharacteristic(characteristicId);
       const listener = (ev: Event) => {
-        const target = ev.target as BluetoothRemoteGATTCharacteristic;
-        const val = target.value ? new TextDecoder().decode(target.value.buffer) : '';
+        const target = ev.target as any;
+        const val = target?.value ? new TextDecoder().decode(target.value.buffer) : '';
         emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: val, direction: 'notification' });
       };
       await ch.startNotifications();
