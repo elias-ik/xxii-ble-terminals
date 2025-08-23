@@ -736,6 +736,7 @@ export const useBLEStore = create<BLEState>()(
           const mapped = { deviceId: evt.deviceId, state: (evt.status || evt.state), connection: evt.connection };
           onConnectionChanged(mapped as any);
         });
+        ble.onSubscriptionChanged(onSubscriptionChanged);
         ble.onCharacteristicValue((evt: any) => onCharacteristicValue({ ...evt, direction: evt.direction || 'notification' }));
       },
       
@@ -750,6 +751,7 @@ export const useBLEStore = create<BLEState>()(
           if (ble.removeDeviceDiscoveredListener) ble.removeDeviceDiscoveredListener(h.onDeviceDiscovered);
           if (ble.removeDeviceUpdatedListener) ble.removeDeviceUpdatedListener(h.onDeviceUpdated);
           if (ble.removeConnectionChangedListener) ble.removeConnectionChangedListener(h.onConnectionChanged);
+          if (ble.removeSubscriptionChangedListener) ble.removeSubscriptionChangedListener(h.onSubscriptionChanged);
           if (ble.removeCharacteristicValueListener) ble.removeCharacteristicValueListener(h.onCharacteristicValue);
         }
         delete w.__bleHandlers;

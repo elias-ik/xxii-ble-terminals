@@ -413,8 +413,12 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                           const nextNotifyArr = (deviceUI.selectedNotifyKeys || []).filter((k: string) => k !== keyToRemove);
                           const nextIndicateArr = (deviceUI.selectedIndicateKeys || []).filter((k: string) => k !== keyToRemove);
                           setDeviceUI(deviceId, { selectedReadKeys: nextReadArr, selectedNotifyKeys: nextNotifyArr, selectedIndicateKeys: nextIndicateArr, ...(writeKey === keyToRemove ? { writeMode: null } : {}) });
-                          const willStaySubscribed = nextNotifyArr.includes(keyToRemove) || nextIndicateArr.includes(keyToRemove);
-                          if (!willStaySubscribed && ch.subscribed) {
+                          // Check if the characteristic will still be subscribed after removal
+                          // If it was in notify/indicate arrays and is being removed, it should be unsubscribed
+                          const wasNotifySelected = (deviceUI.selectedNotifyKeys || []).includes(keyToRemove);
+                          const wasIndicateSelected = (deviceUI.selectedIndicateKeys || []).includes(keyToRemove);
+                          const shouldUnsubscribe = (wasNotifySelected || wasIndicateSelected) && ch.subscribed;
+                          if (shouldUnsubscribe) {
                             (useBLEStore.getState() as any).unsubscribe(deviceId, svc.uuid, ch.uuid);
                           }
                         }}>
@@ -489,11 +493,11 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                     const next = new Set<string>(selectedNotifySet);
                                     const wasSelected = next.has(key);
                                     if (wasSelected) next.delete(key); else next.add(key);
-                                    const willBeSubscribed = (!wasSelected || next.has(key)) || selectedIndicateSet.has(key);
+                                    const willBeSubscribed = next.has(key) || selectedIndicateSet.has(key);
                                     if (willBeSubscribed && !ch.subscribed) {
                                       (useBLEStore.getState() as any).subscribe(deviceId, service.uuid, ch.uuid);
                                     }
-                                    if (!next.has(key) && !selectedIndicateSet.has(key) && ch.subscribed) {
+                                    if (!willBeSubscribed && ch.subscribed) {
                                       (useBLEStore.getState() as any).unsubscribe(deviceId, service.uuid, ch.uuid);
                                     }
                                     setDeviceUI(deviceId, { selectedNotifyKeys: Array.from(next) as string[] });
@@ -510,11 +514,11 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                     const next = new Set<string>(selectedIndicateSet);
                                     const wasSelected = next.has(key);
                                     if (wasSelected) next.delete(key); else next.add(key);
-                                    const willBeSubscribed = selectedNotifySet.has(key) || (!wasSelected || next.has(key));
+                                    const willBeSubscribed = selectedNotifySet.has(key) || next.has(key);
                                     if (willBeSubscribed && !ch.subscribed) {
                                       (useBLEStore.getState() as any).subscribe(deviceId, service.uuid, ch.uuid);
                                     }
-                                    if (!next.has(key) && !selectedNotifySet.has(key) && ch.subscribed) {
+                                    if (!willBeSubscribed && ch.subscribed) {
                                       (useBLEStore.getState() as any).unsubscribe(deviceId, service.uuid, ch.uuid);
                                     }
                                     setDeviceUI(deviceId, { selectedIndicateKeys: Array.from(next) as string[] });
