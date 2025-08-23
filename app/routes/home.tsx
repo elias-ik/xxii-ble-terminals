@@ -1,7 +1,6 @@
 import type { Route } from "./+types/home";
 import { Button } from "../components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../components/ui/collapsible";
-import { ChevronLeft, ChevronRight, Bluetooth, RefreshCw, Settings } from "lucide-react";
+import { Bluetooth, RefreshCw, Settings, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useBLEStore, selectors } from "../lib/ble-store";
 import { DeviceList } from "../components/device-list";
 import { DeviceDetails } from "../components/device-details";
@@ -65,6 +64,14 @@ function HomeContent() {
               <Bluetooth className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">{globalStatus}</span>
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => toggleSidebarCollapse(!sidebarCollapsed)}
+              aria-label={sidebarCollapsed ? "Open sidebar" : "Close sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            </Button>
           </div>
           
           <div className="flex items-center gap-2">
@@ -87,27 +94,19 @@ function HomeContent() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - Device List */}
-        <Collapsible
-          open={!sidebarCollapsed}
-          onOpenChange={(open) => toggleSidebarCollapse(!open)}
-          className="border-r bg-card flex flex-col shrink-0 w-[320px] min-w-[320px] max-w-[320px]"
-        >
-          <div className="flex items-center justify-between p-3 border-b">
-            <h2 className="font-medium text-foreground">Devices</h2>
-            <CollapsibleTrigger asChild>
-              <Button variant="ghost" size="sm">
-                {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
-            </CollapsibleTrigger>
-          </div>
-          
-          <CollapsibleContent className="flex-1 flex flex-col min-h-0">
-            <DeviceList
-              onDeviceSelect={selectDevice}
-              selectedDevice={selectedDevice}
-            />
-          </CollapsibleContent>
-        </Collapsible>
+        {!sidebarCollapsed && (
+          <aside className="border-r bg-card flex flex-col shrink-0 w-[320px] min-w-[320px] max-w-[320px]">
+            <div className="p-3 border-b">
+              <h2 className="font-medium text-foreground">Devices</h2>
+            </div>
+            <div className="flex-1 flex flex-col min-h-0">
+              <DeviceList
+                onDeviceSelect={selectDevice}
+                selectedDevice={selectedDevice}
+              />
+            </div>
+          </aside>
+        )}
 
         {/* Right Content Pane */}
         <div className="flex-1 flex flex-col">
