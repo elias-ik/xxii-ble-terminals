@@ -51,7 +51,7 @@ export const webBluetoothClient: BLEClient = {
         const bt = new Bluetooth({
           allowAllDevices: true,
           scanTime: 2, // short burst; we loop until idle window
-          deviceFound: (device: any) => {
+          deviceFound: (device: any, selectFn: () => void) => {
             const id = device?.id || device?.address || device?.name || String(Math.random());
             if (!seen.has(id)) {
               seen.add(id);
@@ -68,7 +68,9 @@ export const webBluetoothClient: BLEClient = {
                 connectionStatus: 'disconnected'
               } as any);
             }
-            return false; // never auto-select; keep scanning
+            // Immediately resolve this requestDevice burst so the loop can evaluate idle time
+            try { selectFn(); } catch {}
+            return true;
           }
         } as any);
         try {
@@ -86,6 +88,9 @@ export const webBluetoothClient: BLEClient = {
         await runOnce(iter);
         const idleMs = Date.now() - lastFoundAt;
         const totalMs = Date.now() - startedAt;
+        log.info('scan(): idleMs', idleMs);
+        log.info('scan(): totalMs', totalMs);
+        log.info('scan(): iter', iter);
         if (idleMs >= idleLimitMs || totalMs >= maxTotalMs || iter >= maxIterations) {
           keepGoing = false;
         }
