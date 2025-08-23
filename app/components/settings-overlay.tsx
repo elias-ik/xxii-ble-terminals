@@ -42,7 +42,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
     }
 
     const { validateHexInput } = useBLEStore.getState();
-    const validation = validateHexInput(input);
+    const validation = validateHexInput(input, settings.hexFillerPosition);
     setHexValidation(validation);
   };
 

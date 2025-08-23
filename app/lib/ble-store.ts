@@ -172,6 +172,62 @@ export interface BLEState {
   
   // UI per Device actions
   setDeviceUI: (deviceId: string, update: Partial<BLEState['deviceUI'][string]>) => void;
+  
+  // High-level actions
+  scan: () => Promise<void>;
+  connect: (deviceId: string) => Promise<void>;
+  disconnect: (deviceId: string) => Promise<void>;
+  read: (deviceId: string, serviceId: string, characteristicId: string) => Promise<void>;
+  write: (deviceId: string, serviceId: string, characteristicId: string, data: string) => Promise<void>;
+  subscribe: (deviceId: string, serviceId: string, characteristicId: string) => Promise<void>;
+  unsubscribe: (deviceId: string, serviceId: string, characteristicId: string) => Promise<void>;
+  unsubscribeAll: (deviceId: string) => Promise<void>;
+  
+  // Console actions
+  clearConsole: (deviceId: string) => void;
+  markConsoleAsPrevious: (deviceId: string) => void;
+  
+  // Settings actions
+  setDeviceSettings: (deviceId: string, settings: Partial<DeviceSettings>) => void;
+  
+  // Selection actions
+  selectDevice: (deviceId: string | null) => void;
+  selectService: (serviceId: string | null) => void;
+  selectCharacteristic: (characteristicId: string | null) => void;
+  
+  // Search actions
+  setSearchQuery: (query: string) => void;
+  
+  // UI Persistence actions
+  setSidebarWidth: (width: number) => void;
+  toggleSidebarCollapse: (collapsed: boolean) => void;
+  
+  // Utility functions
+  formatDataForSend: (data: string, format: 'HEX' | 'UTF8' | 'ASCII', hexFillerPosition: 'beginning' | 'end') => string;
+  formatDataForDisplay: (data: string, format: 'HEX' | 'UTF8' | 'ASCII') => string;
+  validateHexInput: (input: string, fillerPosition: 'beginning' | 'end') => { isValid: boolean; formatted?: string; error?: string };
+  
+  // Selector wrappers
+  getSortedFilteredDevices: () => Device[];
+  getFilteredDevices: () => Device[];
+  getSelectedDevice: () => Device | null;
+  getConnection: (deviceId: string) => Connection | null;
+  getActiveConnections: () => Connection[];
+  getCurrentCharacteristic: () => Characteristic | null;
+  getAvailableServices: (deviceId: string) => Service[];
+  getAvailableCharacteristics: (deviceId: string, serviceId: string) => Characteristic[];
+  getConsoleEntries: (deviceId: string) => ConsoleEntry[];
+  getDeviceSettings: (deviceId: string) => DeviceSettings;
+  getDeviceUI: (deviceId: string) => BLEState['deviceUI'][string];
+  getIsScanning: () => boolean;
+  getScanError: () => string | undefined;
+  getActionHistory: () => Array<{ action: BLEAction; timestamp: Date }>;
+  getLastAction: () => { action: BLEAction; timestamp: Date } | null;
+  getActiveSubscriptions: (deviceId: string) => Array<{ serviceId: string; characteristicId: string }>;
+  
+  // Simulation methods (for testing)
+  simulateConnectionLoss: (deviceId: string) => void;
+  simulateReconnection: (deviceId: string) => void;
 }
 
 // ============================================================================
@@ -1035,6 +1091,17 @@ export const useBLEStore = create<BLEState>()(
       getLastAction: () => {
         const state = get();
         return selectors.getLastAction(state);
+      },
+      
+      // Simulation methods (for testing)
+      simulateConnectionLoss: (deviceId: string) => {
+        const { dispatch } = get();
+        dispatch({ type: 'CONNECTION_LOST', payload: { deviceId } });
+      },
+      
+      simulateReconnection: (deviceId: string) => {
+        const { dispatch } = get();
+        dispatch({ type: 'CONNECTION_SUCCEEDED', payload: { deviceId, connection: { deviceId, connected: true, services: {} } } });
       }
     })),
     {
