@@ -59,19 +59,19 @@ function HomeContent() {
       <header className="border-b bg-card">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => toggleSidebarCollapse(!sidebarCollapsed)}
+              aria-label={sidebarCollapsed ? "Open sidebar" : "Close sidebar"}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen className="h-6 w-6" /> : <PanelLeftClose className="h-6 w-6" />}
+            </Button>
             <h1 className="text-xl font-semibold text-foreground">XXII BLE Terminals</h1>
             <div className="flex items-center gap-2">
               <Bluetooth className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">{globalStatus}</span>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => toggleSidebarCollapse(!sidebarCollapsed)}
-              aria-label={sidebarCollapsed ? "Open sidebar" : "Close sidebar"}
-            >
-              {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-            </Button>
           </div>
           
           <div className="flex items-center gap-2">
