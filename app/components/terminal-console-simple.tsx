@@ -287,9 +287,10 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
   const rowVirtualizer = useVirtualizer({
     count: consoleMessages.length,
     getScrollElement: () => viewportRef.current as HTMLElement | null,
-    estimateSize: () => 80, // closer to average height for smoother backscroll
-    overscan: 20,
+    estimateSize: () => 96, // closer to average tall row to reduce correction jumps
+    overscan: 30,
     getItemKey: (index) => (consoleMessages[index]?.id ?? index),
+    measureElement: (el: Element) => Math.ceil((el as HTMLElement).getBoundingClientRect().height),
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
@@ -555,6 +556,8 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         left: 0,
                         width: '100%',
                         transform: `translateY(${vItem.start}px)`,
+                        willChange: 'transform',
+                        contain: 'layout paint size',
                       }}
                       className=""
                     >
