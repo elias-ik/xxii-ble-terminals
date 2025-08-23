@@ -620,9 +620,9 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         top: 0,
                         left: 0,
                         width: '100%',
-                        transform: `translateY(${vItem.start}px)`,
+                        transform: `translateY(${vItem.start + (vItem.index * 8)}px)`,
                       }}
-                      className={`flex items-start gap-3 p-2 rounded mb-2 ${
+                      className={`flex items-start gap-3 p-2 rounded ${
                         message.direction === 'out' ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-green-50 dark:bg-green-950/20'
                       } ${message.isPrevious ? 'opacity-50' : ''}`}
                       role="log"
