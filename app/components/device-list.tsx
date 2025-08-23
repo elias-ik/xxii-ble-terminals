@@ -37,6 +37,11 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   }
 
   const filteredDevices = getFilteredDevices();
+  // Helper must be defined before use in sorting
+  const isUnsupportedName = (name: string | undefined) => {
+    if (!name) return false;
+    return name === 'Unsupported' || /^Unknown or Unsupported Device \(.*\)$/.test(name);
+  };
   // UI-side sorting: connected first, then unsupported to bottom, then by strongest RSSI
   const sortedDevices = [...filteredDevices].sort((a: any, b: any) => {
     // 1) Connection status
@@ -113,11 +118,6 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   const truncateWithDots = (text: string, maxChars: number = 26) => {
     if (!text) return '';
     return text.length > maxChars ? text.slice(0, maxChars) + ' ..' : text;
-  };
-
-  const isUnsupportedName = (name: string | undefined) => {
-    if (!name) return false;
-    return name === 'Unsupported' || /^Unknown or Unsupported Device \(.*\)$/.test(name);
   };
 
   const truncateMiddle = (text: string, maxChars: number = 22) => {
