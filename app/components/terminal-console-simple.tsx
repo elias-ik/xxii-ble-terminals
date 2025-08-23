@@ -339,6 +339,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
+  const ROW_GAP_PX = 8;
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -606,7 +607,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                 <p className="text-xs">Send a message or subscribe to notifications</p>
               </div>
             ) : (
-              <div className="relative w-full" style={{ height: totalSize }}>
+              <div className="relative w-full" style={{ height: totalSize + Math.max(0, consoleMessages.length - 1) * ROW_GAP_PX }}>
                 {virtualItems.map((vItem) => {
                   const message = consoleMessages[vItem.index];
                   const accessibleLabel = generateAccessibleLabel('console-entry', message);
@@ -620,7 +621,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         top: 0,
                         left: 0,
                         width: '100%',
-                        transform: `translateY(${vItem.start}px)`,
+                        transform: `translateY(${vItem.start + vItem.index * ROW_GAP_PX}px)`,
                       }}
                       className=""
                     >
@@ -658,8 +659,6 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                           </Button>
                         </div>
                       </div>
-                      {/* Spacer to create visual gap and be part of measured height */}
-                      <div style={{ height: 8 }} />
                     </div>
                   </div>
                 );
