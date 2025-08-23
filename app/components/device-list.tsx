@@ -251,7 +251,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                   key={device.id}
                   className={`px-2 py-1 border-b cursor-pointer select-none ${
                     isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
-                  } ${device.connectionStatus === 'lost' ? 'bg-orange-50/50' : ''}`}
+                  }`}
                   onClick={() => handleDeviceClick(device.id)}
                   onKeyDown={(e) => handleDeviceKeyDown(e, device.id)}
                   tabIndex={0}
