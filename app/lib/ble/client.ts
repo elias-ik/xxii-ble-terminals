@@ -31,7 +31,15 @@ export interface BLEClient {
 
 // Lazy import mock implementation for now; swap here later for real library
 import { mockBLEClient } from './mock-client.ts';
+let impl: BLEClient = mockBLEClient;
+try {
+  // Prefer real WebBluetooth client when available
+  if (typeof window !== 'undefined') {
+    const mod = await import('./webbluetooth-client.ts');
+    impl = (mod as any).webBluetoothClient as BLEClient;
+  }
+} catch {}
 
-export const bleClient: BLEClient = mockBLEClient;
+export const bleClient: BLEClient = impl;
 
 
