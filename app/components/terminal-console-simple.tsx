@@ -336,7 +336,6 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
     getScrollElement: () => viewportRef.current as HTMLElement | null,
     estimateSize: () => 80, // 72px for content + 8px for spacing
     overscan: 10,
-    getItemSize: (index) => 80, // Each item is 72px content + 8px spacing
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
@@ -622,9 +621,8 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         left: 0,
                         width: '100%',
                         transform: `translateY(${vItem.start}px)`,
-                        height: '72px',
                       }}
-                      className={`flex items-start gap-3 p-2 rounded ${
+                      className={`flex items-start gap-3 p-2 rounded mb-2 ${
                         message.direction === 'out' ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-green-50 dark:bg-green-950/20'
                       } ${message.isPrevious ? 'opacity-50' : ''}`}
                       role="log"
