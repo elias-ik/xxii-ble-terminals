@@ -2,6 +2,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import { Search, RefreshCw, WifiOff } from 'lucide-react';
 import { useBLEStore } from '@/lib/ble-store';
 import { generateAccessibleLabel, statusColors, getContrastColor } from '@/hooks/use-keyboard-shortcuts';
@@ -100,6 +101,11 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
 
   const getDeviceDisplayName = (device: any) => {
     return device.name || `Device ${formatAddress(device.address)}`;
+  };
+
+  const truncateWithDots = (text: string, maxChars: number = 26) => {
+    if (!text) return '';
+    return text.length > maxChars ? text.slice(0, maxChars) + ' ..' : text;
   };
 
   const getConnectionBadge = (device: any) => {
@@ -228,7 +234,26 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                         aria-label={`Status: ${statusTitle}`}
                         title={statusTitle}
                       />
-                      <span className="font-medium text-[13px] truncate">{getDeviceDisplayName(device)}</span>
+                      {(() => {
+                        const fullName = getDeviceDisplayName(device);
+                        const maxChars = 26;
+                        const isTruncated = fullName.length > maxChars;
+                        const shown = truncateWithDots(fullName, maxChars);
+                        return (
+                          <HoverCard openDelay={150}>
+                            <HoverCardTrigger asChild>
+                              <span className="font-medium text-[13px] cursor-default">
+                                {shown}
+                              </span>
+                            </HoverCardTrigger>
+                            {isTruncated && (
+                              <HoverCardContent side="top" align="start" className="max-w-xs">
+                                <div className="text-sm break-words">{fullName}</div>
+                              </HoverCardContent>
+                            )}
+                          </HoverCard>
+                        );
+                      })()}
                       <div className="ml-auto flex items-center gap-2">
                         {getConnectionBadge(device)}
                       </div>

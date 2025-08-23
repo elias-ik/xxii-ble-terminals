@@ -90,7 +90,7 @@ function HomeContent() {
         <Collapsible
           open={!sidebarCollapsed}
           onOpenChange={(open) => toggleSidebarCollapse(!open)}
-          className="border-r bg-card flex flex-col"
+          className="border-r bg-card flex flex-col shrink-0 w-[320px] min-w-[320px] max-w-[320px]"
         >
           <div className="flex items-center justify-between p-3 border-b">
             <h2 className="font-medium text-foreground">Devices</h2>
