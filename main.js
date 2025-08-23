@@ -29,6 +29,16 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
+    // Log renderer console and failures to help diagnose blank screen
+    mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+      console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+    });
+    mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL) => {
+      console.error('Renderer did-fail-load:', { errorCode, errorDescription, validatedURL });
+    });
+    mainWindow.webContents.on('render-process-gone', (_e, details) => {
+      console.error('Renderer process gone:', details);
+    });
   } else {
     // In production, load the built files
     console.log('Loading from production build');

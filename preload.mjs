@@ -9,11 +9,44 @@ const __dirname = path.dirname(__filename);
 
 // Wrap everything in an async function to handle dynamic imports
 async function initializePreload() {
-  // Import the shared BLE client directly from TypeScript
-  // Note: path is relative to project root where preload.mjs lives
-  const { bleClient } = await import('./app/lib/ble/client.ts');
-  // Storage (electron-store)
-  const { default: Store } = await import('electron-store');
+  // Attempt to import BLE client (TypeScript). If it fails in preload, provide a no-op fallback
+  let bleClient;
+  try {
+    const mod = await import('./app/lib/ble/client.ts');
+    bleClient = mod.bleClient;
+  } catch (err) {
+    console.warn('Failed to import BLE client in preload, using no-op fallback:', err);
+    const noop = async () => {};
+    const noevent = () => {};
+    bleClient = {
+      on: noevent,
+      off: noevent,
+      scan: noop,
+      connect: noop,
+      disconnect: noop,
+      read: noop,
+      write: noop,
+      subscribe: noop,
+      unsubscribe: noop,
+    };
+  }
+
+  // Storage (electron-store) with safe fallback to in-memory store if needed
+  let Store;
+  try {
+    ({ default: Store } = await import('electron-store'));
+  } catch (err) {
+    console.warn('Failed to import electron-store in preload, using in-memory fallback:', err);
+    const mem = new Map();
+    Store = class {
+      constructor() {}
+      get(key, defVal) { return mem.has(key) ? mem.get(key) : defVal; }
+      set(key, value) { mem.set(key, value); }
+      delete(key) { mem.delete(key); }
+      clear() { mem.clear(); }
+      has(key) { return mem.has(key); }
+    };
+  }
 
   // Small helper to manage add/remove listener mapping
   function createEventRelay() {
