@@ -96,7 +96,11 @@
       "node_modules/**/*"
     ],
     "mac": {
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "extendInfo": {
+        "NSBluetoothAlwaysUsageDescription": "This app uses Bluetooth to discover and communicate with nearby devices.",
+        "NSBluetoothPeripheralUsageDescription": "This app uses Bluetooth to discover and communicate with nearby devices."
+      }
     },
     "win": {
       "target": "nsis"

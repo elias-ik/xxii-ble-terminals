@@ -32,10 +32,20 @@ export const webBluetoothClient: BLEClient = {
   async scan() {
     try {
       emitter.emit('scanStatus', { status: 'scanning' });
-      const bluetooth = (await import('webbluetooth')).bluetooth;
-      // WebBluetooth doesn't support general scanning without user gesture; emulate via requestDevice
-      // We'll just indicate scanning completed with zero devices to keep UI consistent.
-      emitter.emit('scanStatus', { status: 'completed', deviceCount: 0 });
+      const { bluetooth } = await import('webbluetooth');
+      // Must be triggered via user gesture; request any device to populate at least one result
+      const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['device_information'] });
+      emitter.emit('deviceDiscovered', {
+        id: device.id,
+        name: device.name || 'BLE Device',
+        address: device.id,
+        rssi: -60,
+        connected: false,
+        lastSeen: new Date(),
+        previouslyConnected: false,
+        connectionStatus: 'disconnected'
+      } as any);
+      emitter.emit('scanStatus', { status: 'completed', deviceCount: 1 });
     } catch (error: any) {
       emitter.emit('scanStatus', { status: 'failed', error: String(error?.message || error) });
     }
