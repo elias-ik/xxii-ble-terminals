@@ -127,7 +127,7 @@ export const webBluetoothClient: BLEClient = {
               discoveredDevices.set(id, device);
               seen.add(id);
               lastFoundAt = Date.now();
-              log.info('scan(): deviceFound', { id, name: deviceName });
+              // Suppress scan logs to reduce noise
               emitter.emit('deviceDiscovered', {
                 id,
                 name: deviceName,
@@ -200,6 +200,9 @@ export const webBluetoothClient: BLEClient = {
       const seenServiceUuids = new Set<string>();
       const queue: any[] = await listRootServices(server);
       log.info('connect(): discovered root services (union primary+all)', queue?.length);
+      try {
+        log.info('connect(): root service UUIDs', Array.isArray(queue) ? queue.map((s: any) => s?.uuid) : []);
+      } catch {}
 
       while (queue.length > 0) {
         const svc = queue.shift();
@@ -214,6 +217,9 @@ export const webBluetoothClient: BLEClient = {
             for (const inc of included) {
               if (inc && !seenServiceUuids.has(inc.uuid)) queue.push(inc);
             }
+            try {
+              log.info('connect(): included services', { parent: svc.uuid, uuids: included.map((i: any) => i?.uuid) });
+            } catch {}
           }
         } catch (e) {
           // Some stacks may not support included services; ignore
@@ -239,6 +245,9 @@ export const webBluetoothClient: BLEClient = {
               subscribed: false,
             };
           }
+          try {
+            log.info('connect(): characteristics for service', { service: svc.uuid, uuids: Object.keys(chMap) });
+          } catch {}
         } catch (e) {
           // If characteristics enumeration fails for a service, continue with others
         }
@@ -253,6 +262,12 @@ export const webBluetoothClient: BLEClient = {
         characteristics: nativeChars,
         uiServices: svcMap,
       });
+      try {
+        log.info('connect(): cache summary', {
+          services: Object.keys(svcMap).length,
+          characteristics: Array.from(nativeChars.keys()).length,
+        });
+      } catch {}
 
       const connection: Connection = {
         deviceId: device.id || deviceId,
