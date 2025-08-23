@@ -290,7 +290,6 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
     estimateSize: () => 96, // closer to average tall row to reduce correction jumps
     overscan: 30,
     getItemKey: (index) => (consoleMessages[index]?.id ?? index),
-    measureElement: (el: Element) => Math.ceil((el as HTMLElement).getBoundingClientRect().height),
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
@@ -557,7 +556,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                         width: '100%',
                         transform: `translateY(${vItem.start}px)`,
                         willChange: 'transform',
-                        contain: 'layout paint size',
+                        contain: 'layout paint',
                       }}
                       className=""
                     >
