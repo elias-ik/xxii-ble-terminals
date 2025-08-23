@@ -52,21 +52,26 @@ const activeConnections = new Map<string, {
   uiServices?: Record<string, Service>;
 }>();
 
-async function listPrimaryServices(server: any): Promise<any[]> {
-  // Prefer standard getPrimaryServices; fall back to getServices if available
+async function listRootServices(server: any): Promise<any[]> {
+  // Union of primary services and all services (if supported), dedup by uuid
+  const byUuid = new Map<string, any>();
   try {
     if (typeof server.getPrimaryServices === 'function') {
-      const s = await server.getPrimaryServices();
-      if (Array.isArray(s) && s.length) return s;
+      const prim = await server.getPrimaryServices();
+      if (Array.isArray(prim)) {
+        for (const s of prim) if (s?.uuid && !byUuid.has(s.uuid)) byUuid.set(s.uuid, s);
+      }
     }
   } catch {}
   try {
     if (typeof server.getServices === 'function') {
-      const s = await server.getServices();
-      if (Array.isArray(s) && s.length) return s;
+      const all = await server.getServices();
+      if (Array.isArray(all)) {
+        for (const s of all) if (s?.uuid && !byUuid.has(s.uuid)) byUuid.set(s.uuid, s);
+      }
     }
   } catch {}
-  return [];
+  return Array.from(byUuid.values());
 }
 
 async function getNativeService(deviceId: string, serviceId: string) {
@@ -193,8 +198,8 @@ export const webBluetoothClient: BLEClient = {
       const nativeChars = new Map<string, any>();
 
       const seenServiceUuids = new Set<string>();
-      const queue: any[] = await listPrimaryServices(server);
-      log.info('connect(): discovered primary services', queue?.length);
+      const queue: any[] = await listRootServices(server);
+      log.info('connect(): discovered root services (union primary+all)', queue?.length);
 
       while (queue.length > 0) {
         const svc = queue.shift();
