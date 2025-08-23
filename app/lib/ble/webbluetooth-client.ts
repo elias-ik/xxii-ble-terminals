@@ -18,6 +18,11 @@ class Emitter {
 }
 
 const emitter = new Emitter();
+const log = {
+  info: (...args: any[]) => console.log('[WebBLE]', ...args),
+  warn: (...args: any[]) => console.warn('[WebBLE]', ...args),
+  error: (...args: any[]) => console.error('[WebBLE]', ...args),
+};
 
 // Simple in-memory subscription map for notifications
 const subscriptions = new Map<string, () => void>();
@@ -34,7 +39,9 @@ export const webBluetoothClient: BLEClient = {
       emitter.emit('scanStatus', { status: 'scanning' });
       const { bluetooth } = await import('webbluetooth');
       // Must be triggered via user gesture; request any device to populate at least one result
+      log.info('scan(): calling requestDevice...');
       const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['device_information'] });
+      log.info('scan(): requestDevice returned', { id: device?.id, name: device?.name });
       emitter.emit('deviceDiscovered', {
         id: device.id,
         name: device.name || 'BLE Device',
@@ -47,6 +54,7 @@ export const webBluetoothClient: BLEClient = {
       } as any);
       emitter.emit('scanStatus', { status: 'completed', deviceCount: 1 });
     } catch (error: any) {
+      log.error('scan() failed', error);
       emitter.emit('scanStatus', { status: 'failed', error: String(error?.message || error) });
     }
   },
@@ -55,9 +63,13 @@ export const webBluetoothClient: BLEClient = {
       emitter.emit('connectionChanged', { deviceId, state: 'connecting' });
       const { bluetooth } = await import('webbluetooth');
       // Ask for any device if id is not resolvable
+      log.info('connect(): requestDevice...', { deviceId });
       const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['generic_access','device_information'] });
+      log.info('connect(): got device', { id: device.id, name: device.name });
       const server = await device.gatt!.connect();
+      log.info('connect(): gatt connected');
       const services = await server.getPrimaryServices();
+      log.info('connect(): discovered services', services?.length);
 
       const svcMap: Record<string, Service> = {};
       for (const svc of services) {
@@ -88,7 +100,8 @@ export const webBluetoothClient: BLEClient = {
         connectedAt: new Date()
       };
       emitter.emit('connectionChanged', { deviceId: device.id || deviceId, state: 'connected', connection });
-    } catch (error) {
+    } catch (error: any) {
+      log.error('connect() failed', error);
       emitter.emit('connectionChanged', { deviceId, state: 'lost' });
     }
   },
@@ -97,13 +110,15 @@ export const webBluetoothClient: BLEClient = {
     try {
       // There is no direct global disconnect via webbluetooth API reference saved here; UI should track server
       emitter.emit('connectionChanged', { deviceId, state: 'disconnected' });
-    } catch {
+    } catch (e) {
+      log.warn('disconnect() swallow error', e);
       emitter.emit('connectionChanged', { deviceId, state: 'disconnected' });
     }
   },
   async read(deviceId, serviceId, characteristicId) {
     try {
       const { bluetooth } = await import('webbluetooth');
+      log.info('read(): requestDevice...', { serviceId, characteristicId });
       const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [serviceId] });
       const server = await device.gatt!.connect();
       const service = await server.getPrimaryService(serviceId);
@@ -111,13 +126,14 @@ export const webBluetoothClient: BLEClient = {
       const value = await ch.readValue();
       const txt = new TextDecoder().decode(value.buffer);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: txt, direction: 'read' });
-    } catch (error) {
-      // ignore
+    } catch (error: any) {
+      log.error('read() failed', { serviceId, characteristicId, error });
     }
   },
   async write(deviceId, serviceId, characteristicId, data) {
     try {
       const { bluetooth } = await import('webbluetooth');
+      log.info('write(): requestDevice...', { serviceId, characteristicId });
       const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [serviceId] });
       const server = await device.gatt!.connect();
       const service = await server.getPrimaryService(serviceId);
@@ -125,13 +141,14 @@ export const webBluetoothClient: BLEClient = {
       const enc = new TextEncoder().encode(data);
       await ch.writeValue(enc);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'write' });
-    } catch (error) {
-      // ignore
+    } catch (error: any) {
+      log.error('write() failed', { serviceId, characteristicId, error });
     }
   },
   async subscribe(deviceId, serviceId, characteristicId) {
     try {
       const { bluetooth } = await import('webbluetooth');
+      log.info('subscribe(): requestDevice...', { serviceId, characteristicId });
       const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: [serviceId] });
       const server = await device.gatt!.connect();
       const service = await server.getPrimaryService(serviceId);
@@ -147,18 +164,18 @@ export const webBluetoothClient: BLEClient = {
         try {
           ch.removeEventListener('characteristicvaluechanged', listener);
           await ch.stopNotifications();
-        } catch {}
+        } catch (e) { log.warn('unsubscribe() inner stop failed', e); }
       });
       emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'started' });
-    } catch (error) {
-      // ignore
+    } catch (error: any) {
+      log.error('subscribe() failed', { serviceId, characteristicId, error });
     }
   },
   async unsubscribe(deviceId, serviceId, characteristicId) {
     const k = key(deviceId, serviceId, characteristicId);
     const stop = subscriptions.get(k);
     if (stop) {
-      await stop();
+      try { await stop(); } catch (e) { log.warn('unsubscribe() stop failed', e); }
       subscriptions.delete(k);
     }
     emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'stopped' });
