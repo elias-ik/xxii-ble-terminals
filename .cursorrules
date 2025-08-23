@@ -1,0 +1,101 @@
+# Cursor Rules for XXII BLE Terminals
+
+## shadcn/ui Components
+
+This project uses shadcn/ui components for consistent UI design. Always use these components instead of creating custom ones:
+
+### Available Components
+- **Layout**: Card, CardContent, CardDescription, CardHeader, CardTitle, Separator
+- **Navigation**: Button, DropdownMenu, NavigationMenu, Tabs
+- **Forms**: Input, Label, Checkbox, RadioGroup, Select, Textarea, Switch, Slider
+- **Feedback**: Alert, Badge, Progress, Skeleton, Toast (use Sonner)
+- **Data Display**: Table, Avatar, Badge, Calendar
+- **Overlay**: Dialog, Popover, Tooltip, HoverCard, Sheet
+- **Interactive**: Accordion, Collapsible, Command, ContextMenu
+
+### Import Pattern
+```typescript
+import { ComponentName } from "@/components/ui/component-name"
+```
+
+### Component Usage Guidelines
+1. **Always use shadcn components** for UI elements instead of custom HTML
+2. **Follow the component API** - use the props and variants as documented
+3. **Use semantic variants** - default, secondary, destructive, outline, ghost
+4. **Maintain consistency** - use the same component patterns throughout the app
+
+## Dark/Light Mode Support
+
+### Theme System
+- **System Default**: The app defaults to system theme preference
+- **Manual Override**: Users can switch between light, dark, and system themes
+- **Automatic Detection**: Respects system dark/light mode changes
+
+### CSS Classes for Theming
+- **Background**: `bg-background` (adapts to theme)
+- **Text**: `text-foreground` (adapts to theme)
+- **Borders**: `border-border` (adapts to theme)
+- **Muted Text**: `text-muted-foreground` (adapts to theme)
+
+### Theme-Aware Components
+All shadcn components automatically adapt to the current theme. Use:
+- `bg-background` instead of `bg-white` or `bg-gray-950`
+- `text-foreground` instead of `text-black` or `text-white`
+- `border-border` instead of `border-gray-200` or `border-gray-800`
+
+### Theme Toggle
+Include the ThemeToggle component in headers/navigation:
+```typescript
+import { ThemeToggle } from "@/components/theme-toggle"
+```
+
+## Code Style Guidelines
+
+### TypeScript
+- Use TypeScript for all components and functions
+- Define proper types for props and state
+- Use React.FC or function components with proper typing
+
+### Styling
+- Use Tailwind CSS classes for styling
+- Prefer shadcn component variants over custom CSS
+- Use theme-aware classes (bg-background, text-foreground, etc.)
+- Avoid hardcoded colors - use CSS variables
+
+### Component Structure
+```typescript
+import { ComponentProps } from "@/components/ui/component"
+
+interface MyComponentProps {
+  // Define props
+}
+
+export function MyComponent({ ...props }: MyComponentProps) {
+  return (
+    <div className="bg-background text-foreground">
+      {/* Use shadcn components */}
+    </div>
+  )
+}
+```
+
+## File Organization
+- UI components: `app/components/ui/`
+- Custom components: `app/components/`
+- Routes: `app/routes/`
+- Utilities: `app/lib/`
+
+## Best Practices
+1. **Always consider dark/light mode** when creating new components
+2. **Use semantic color classes** that adapt to themes
+3. **Test components** in both light and dark modes
+4. **Follow shadcn patterns** for consistency
+5. **Use proper accessibility** attributes and ARIA labels
+6. **Keep components focused** and reusable
+
+## Git
+After every edit process, commit what you just did to git, dont change branches, just commit with a fitting message. Dont commit after every single file, but just in general when it makes sense. Don't push, just commit all files. 
+
+## dont change stuff your not asked to, like adding features or fixing bugs
+
+you dont need to run `npm run electron:dev:simple` or whatever i have the project start almost always in "watch"/hot reload mode
