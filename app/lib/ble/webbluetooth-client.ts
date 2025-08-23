@@ -44,12 +44,13 @@ export const webBluetoothClient: BLEClient = {
       let keepGoing = true;
       const idleLimitMs = 5000;
       const maxTotalMs = 60000;
+      const maxIterations = 30;
       const startedAt = Date.now();
 
-      const runOnce = async () => {
+      const runOnce = async (iter: number) => {
         const bt = new Bluetooth({
           allowAllDevices: true,
-          scanTime: 6, // slight buffer above idle window
+          scanTime: 2, // short burst; we loop until idle window
           deviceFound: (device: any) => {
             const id = device?.id || device?.address || device?.name || String(Math.random());
             if (!seen.has(id)) {
@@ -72,17 +73,20 @@ export const webBluetoothClient: BLEClient = {
         } as any);
         try {
           // Will scan and invoke deviceFound; we ignore the returned device
+          log.info('scan(): iteration', iter);
           await (bt as any).requestDevice({ acceptAllDevices: true, optionalServices: ['device_information'] });
         } catch (e) {
           // expected if no selection occurs; ignore
         }
       };
 
+      let iter = 0;
       while (keepGoing) {
-        await runOnce();
+        iter += 1;
+        await runOnce(iter);
         const idleMs = Date.now() - lastFoundAt;
         const totalMs = Date.now() - startedAt;
-        if (idleMs >= idleLimitMs || totalMs >= maxTotalMs) {
+        if (idleMs >= idleLimitMs || totalMs >= maxTotalMs || iter >= maxIterations) {
           keepGoing = false;
         }
       }
