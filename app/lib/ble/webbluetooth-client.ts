@@ -37,22 +37,57 @@ export const webBluetoothClient: BLEClient = {
   async scan() {
     try {
       emitter.emit('scanStatus', { status: 'scanning' });
-      const { bluetooth } = await import('webbluetooth');
-      // Must be triggered via user gesture; request any device to populate at least one result
-      log.info('scan(): calling requestDevice...');
-      const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['device_information'] });
-      log.info('scan(): requestDevice returned', { id: device?.id, name: device?.name });
-      emitter.emit('deviceDiscovered', {
-        id: device.id,
-        name: device.name || 'BLE Device',
-        address: device.id,
-        rssi: -60,
-        connected: false,
-        lastSeen: new Date(),
-        previouslyConnected: false,
-        connectionStatus: 'disconnected'
-      } as any);
-      emitter.emit('scanStatus', { status: 'completed', deviceCount: 1 });
+      const { Bluetooth } = await import('webbluetooth');
+
+      const seen = new Set<string>();
+      let lastFoundAt = Date.now();
+      let keepGoing = true;
+      const idleLimitMs = 5000;
+      const maxTotalMs = 60000;
+      const startedAt = Date.now();
+
+      const runOnce = async () => {
+        const bt = new Bluetooth({
+          allowAllDevices: true,
+          scanTime: 6, // slight buffer above idle window
+          deviceFound: (device: any) => {
+            const id = device?.id || device?.address || device?.name || String(Math.random());
+            if (!seen.has(id)) {
+              seen.add(id);
+              lastFoundAt = Date.now();
+              log.info('scan(): deviceFound', { id, name: device?.name });
+              emitter.emit('deviceDiscovered', {
+                id,
+                name: device?.name || 'BLE Device',
+                address: id,
+                rssi: -60,
+                connected: false,
+                lastSeen: new Date(),
+                previouslyConnected: false,
+                connectionStatus: 'disconnected'
+              } as any);
+            }
+            return false; // never auto-select; keep scanning
+          }
+        } as any);
+        try {
+          // Will scan and invoke deviceFound; we ignore the returned device
+          await (bt as any).requestDevice({ acceptAllDevices: true, optionalServices: ['device_information'] });
+        } catch (e) {
+          // expected if no selection occurs; ignore
+        }
+      };
+
+      while (keepGoing) {
+        await runOnce();
+        const idleMs = Date.now() - lastFoundAt;
+        const totalMs = Date.now() - startedAt;
+        if (idleMs >= idleLimitMs || totalMs >= maxTotalMs) {
+          keepGoing = false;
+        }
+      }
+
+      emitter.emit('scanStatus', { status: 'completed', deviceCount: seen.size });
     } catch (error: any) {
       log.error('scan() failed', error);
       emitter.emit('scanStatus', { status: 'failed', error: String(error?.message || error) });
