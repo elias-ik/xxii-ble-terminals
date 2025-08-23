@@ -30,6 +30,8 @@ const log = {
 
 // Simple in-memory subscription map for notifications
 const subscriptions = new Map<string, () => void>();
+// Cache of discovered devices during scan to avoid re-requesting on connect
+const discoveredDevices = new Map<string, any>();
 
 function key(deviceId: string, serviceId: string, characteristicId: string) {
   return `${deviceId}|${serviceId}|${characteristicId}`;
@@ -60,6 +62,8 @@ export const webBluetoothClient: BLEClient = {
               const rawName = device?.name || 'BLE Device';
               const unsupportedRegex = /Unknown or Unsupported Device (.*)/;
               const deviceName = unsupportedRegex.test(device?.name ?? '') ? 'Unsupported' : rawName;
+              // Cache the full device object for later connect()
+              discoveredDevices.set(id, device);
               seen.add(id);
               lastFoundAt = Date.now();
               log.info('scan(): deviceFound', { id, name: deviceName });
@@ -105,11 +109,13 @@ export const webBluetoothClient: BLEClient = {
   async connect(deviceId: string) {
     try {
       emitter.emit('connectionChanged', { deviceId, state: 'connecting' });
-      const { bluetooth } = await import('webbluetooth');
-      // Ask for any device if id is not resolvable
-      log.info('connect(): requestDevice...', { deviceId });
-      const device = await bluetooth.requestDevice({ acceptAllDevices: true, optionalServices: ['generic_access','device_information'] });
-      log.info('connect(): got device', { id: device.id, name: device.name });
+      // Use cached device from scan to avoid re-requesting
+      const device = discoveredDevices.get(deviceId);
+      if (!device) {
+        log.warn('connect(): device not found in cache; ensure scan ran before connect', { deviceId });
+        throw new Error('Device not found in cache');
+      }
+      log.info('connect(): using cached device', { id: device.id, name: device.name });
       const server = await device.gatt!.connect();
       log.info('connect(): gatt connected');
       const services = await server.getPrimaryServices();
