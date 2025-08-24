@@ -186,17 +186,16 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
         }
       }
       case 'ASCII': {
-        // Render with escapes for ALL non-printables; do not escape double quote
-        const parts: string[] = [];
-        for (const b of bytes) {
-          if (b === 0x0A) { parts.push('\\n'); continue; }
-          if (b === 0x0D) { parts.push('\\r'); continue; }
-          if (b === 0x09) { parts.push('\\t'); continue; }
-          if (b === 0x5C) { parts.push('\\\\'); continue; } // backslash
-          if (b >= 0x20 && b <= 0x7E) { parts.push(String.fromCharCode(b)); continue; }
-          parts.push('\\x' + b.toString(16).padStart(2, '0').toUpperCase());
-        }
-        return parts.join('');
+        // Automatic escaping: keep printable ASCII (except backslash), escape everything else
+        const raw = String.fromCharCode(...bytes);
+        return raw.replace(/[\x00-\x1F\x7F-\xFF\\]/g, (ch) => {
+          const code = ch.charCodeAt(0);
+          if (code === 0x0A) return '\\n';
+          if (code === 0x0D) return '\\r';
+          if (code === 0x09) return '\\t';
+          if (code === 0x5C) return '\\\\'; // backslash
+          return '\\x' + code.toString(16).padStart(2, '0').toUpperCase();
+        });
       }
       default:
         return '';
