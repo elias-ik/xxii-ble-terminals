@@ -569,7 +569,9 @@ export const selectors = {
     state.deviceSettings[deviceId] || {
       sendFormat: 'ASCII',
       displayFormat: 'ASCII',
-      hexFillerPosition: 'end'
+      hexFillerPosition: 'end',
+      messageStart: '',
+      messageDelimiter: ''
     },
   
   // UI per Device selector
@@ -633,6 +635,31 @@ function hexStringToBytes(hex: string): Uint8Array {
     bytes.push(parseInt(hex.slice(i, i + 2), 16));
   }
   return new Uint8Array(bytes);
+}
+
+// Parse a framing string (e.g., "\x02", "\n", "\r\n", ",", or literal chars) into bytes
+function framingStringToBytes(input: string): Uint8Array {
+  if (!input) return new Uint8Array();
+  // Replace common escapes first
+  let s = input;
+  s = s.replace(/\\r\\n/g, '\r\n');
+  s = s.replace(/\\n/g, '\n');
+  s = s.replace(/\\r/g, '\r');
+  // Handle \xNN sequences
+  const parts: number[] = [];
+  for (let i = 0; i < s.length; ) {
+    if (s[i] === '\\' && i + 3 < s.length && s[i+1] === 'x') {
+      const hex = s.substring(i + 2, i + 4);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        parts.push(parseInt(hex, 16));
+        i += 4;
+        continue;
+      }
+    }
+    parts.push(s.charCodeAt(i));
+    i += 1;
+  }
+  return new Uint8Array(parts);
 }
 
 function formatDataForDisplay(data: string, format: 'HEX' | 'UTF8' | 'ASCII'): string {
@@ -887,15 +914,22 @@ export const useBLEStore = create<BLEState>()(
         const deviceSettings = selectors.getDeviceSettings(state, deviceId);
         try {
           const formattedData = formatDataForSend(data, deviceSettings.sendFormat, deviceSettings.hexFillerPosition);
-          const rawBytes = deviceSettings.sendFormat === 'HEX'
+          const payloadBytes = deviceSettings.sendFormat === 'HEX'
             ? hexStringToBytes(formattedData)
             : new TextEncoder().encode(formattedData);
+          // Apply framing
+          const startBytes = framingStringToBytes(deviceSettings.messageStart || '');
+          const endBytes = framingStringToBytes(deviceSettings.messageDelimiter || '');
+          const finalBytes = new Uint8Array(startBytes.length + payloadBytes.length + endBytes.length);
+          finalBytes.set(startBytes, 0);
+          finalBytes.set(payloadBytes, startBytes.length);
+          finalBytes.set(endBytes, startBytes.length + payloadBytes.length);
           // Add outbound console entry immediately (show according to display format)
           const consoleEntry: ConsoleEntry = {
             id: `${deviceId}-${serviceId}-${characteristicId}-${Date.now()}`,
             direction: 'out',
             timestamp: new Date(),
-            rawBytes,
+            rawBytes: finalBytes,
             renderFormatAtTime: deviceSettings.displayFormat,
             characteristicId,
             serviceId,
@@ -903,7 +937,7 @@ export const useBLEStore = create<BLEState>()(
           };
           get().dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
           const ble = (window as any).bleAPI;
-          await ble.write(deviceId, serviceId, characteristicId, rawBytes);
+          await ble.write(deviceId, serviceId, characteristicId, finalBytes);
         } catch (error) {
           console.error('Write failed:', error);
         }
