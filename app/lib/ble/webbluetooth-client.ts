@@ -107,6 +107,17 @@ function key(deviceId: string, serviceId: string, characteristicId: string) {
   return `${deviceId}|${serviceId}|${characteristicId}`;
 }
 
+// Collapse SIG base UUIDs (0000xxxx-0000-1000-8000-00805F9B34FB) to short 16-bit form (XXXX)
+function getDisplayUuid(uuid: string): string {
+  if (!uuid) return uuid;
+  const u = uuid.toLowerCase();
+  const base = '-0000-1000-8000-00805f9b34fb';
+  if (u.length === 36 && u.endsWith(base) && u.startsWith('0000')) {
+    return u.slice(4, 8).toUpperCase();
+  }
+  return uuid;
+}
+
 export const webBluetoothClient: BLEClient = {
   on: (e, h) => emitter.on(e, h as any),
   off: (e, h) => emitter.off(e, h as any),
@@ -246,7 +257,7 @@ export const webBluetoothClient: BLEClient = {
             const props = ch.properties || {};
             chMap[ch.uuid] = {
               uuid: ch.uuid,
-              name: ch.uuid,
+              name: getDisplayUuid(ch.uuid),
               capabilities: {
                 read: !!props.read,
                 write: !!props.write,
@@ -264,7 +275,7 @@ export const webBluetoothClient: BLEClient = {
           // If characteristics enumeration fails for a service, continue with others
         }
 
-        svcMap[svc.uuid] = { uuid: svc.uuid, name: svc.uuid, characteristics: chMap } as Service;
+        svcMap[svc.uuid] = { uuid: svc.uuid, name: getDisplayUuid(svc.uuid), characteristics: chMap } as Service;
       }
 
       activeConnections.set(device.id || deviceId, {
