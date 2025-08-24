@@ -143,6 +143,8 @@ export interface BLEState {
   
   // Settings per Device
   deviceSettings: Record<string, DeviceSettings>;
+  // Per-characteristic incoming buffers for assembling framed messages
+  incomingBuffers: Record<string, Uint8Array>;
   
   // UI per Device
   deviceUI: Record<string, {
@@ -715,6 +717,7 @@ export const useBLEStore = create<BLEState>()(
       scanStatus: { status: 'idle' },
       consoleBuffers: {},
       deviceSettings: {},
+      incomingBuffers: {},
       deviceUI: {},
       selectedServiceId: null,
       selectedCharacteristicId: null,
@@ -807,18 +810,88 @@ export const useBLEStore = create<BLEState>()(
 
         const onCharacteristicValue = (evt: { deviceId: string; serviceId: string; characteristicId: string; value: Uint8Array; direction: 'read' | 'write' | 'notification' }) => {
           const settings = selectors.getDeviceSettings(get(), evt.deviceId);
-          const rawBytes = evt.value instanceof Uint8Array ? evt.value : new Uint8Array();
-          const consoleEntry: ConsoleEntry = {
-            id: `${evt.deviceId}-${evt.serviceId}-${evt.characteristicId}-${Date.now()}`,
-            direction: evt.direction === 'write' ? 'out' : 'in',
-            timestamp: new Date(),
-            rawBytes,
-            renderFormatAtTime: settings.displayFormat,
-            characteristicId: evt.characteristicId,
-            serviceId: evt.serviceId,
-            deviceId: evt.deviceId
-          };
-          dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
+          const payload = evt.value instanceof Uint8Array ? evt.value : new Uint8Array();
+          // If inbound (not our echoed write), accumulate by delimiter, emit complete messages
+          if (evt.direction !== 'write') {
+            const key = `${evt.deviceId}|${evt.serviceId}|${evt.characteristicId}`;
+            const state = get();
+            const prev = state.incomingBuffers[key] || new Uint8Array();
+            // Append payload
+            const combined = new Uint8Array(prev.length + payload.length);
+            combined.set(prev, 0);
+            combined.set(payload, prev.length);
+
+            // Compute delimiter bytes
+            const delimiter = framingStringToBytes(settings.messageDelimiter || '');
+            if (delimiter.length === 0) {
+              // No delimiter: push chunk as-is and store combined for potential future framing
+              set((s) => ({ incomingBuffers: { ...s.incomingBuffers, [key]: combined } }));
+              const consoleEntry: ConsoleEntry = {
+                id: `${evt.deviceId}-${evt.serviceId}-${evt.characteristicId}-${Date.now()}`,
+                direction: 'in',
+                timestamp: new Date(),
+                rawBytes: payload,
+                renderFormatAtTime: settings.displayFormat,
+                characteristicId: evt.characteristicId,
+                serviceId: evt.serviceId,
+                deviceId: evt.deviceId
+              };
+              dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
+            } else {
+              // Scan for delimiter sequences and emit complete messages
+              const messages: Uint8Array[] = [];
+              let searchFrom = 0;
+              let buffer = combined;
+              const delim = delimiter;
+              // naive search
+              const indexOfDelim = (arr: Uint8Array, from: number): number => {
+                outer: for (let i = from; i <= arr.length - delim.length; i++) {
+                  for (let j = 0; j < delim.length; j++) {
+                    if (arr[i + j] !== delim[j]) continue outer;
+                  }
+                  return i;
+                }
+                return -1;
+              };
+              let idx = indexOfDelim(buffer, searchFrom);
+              while (idx !== -1) {
+                const msg = buffer.slice(0, idx);
+                messages.push(msg);
+                buffer = buffer.slice(idx + delim.length);
+                idx = indexOfDelim(buffer, 0);
+              }
+              // Save remainder
+              set((s) => ({ incomingBuffers: { ...s.incomingBuffers, [key]: buffer } }));
+
+              // Emit each complete message
+              for (const msg of messages) {
+                const consoleEntry: ConsoleEntry = {
+                  id: `${evt.deviceId}-${evt.serviceId}-${evt.characteristicId}-${Date.now()}`,
+                  direction: 'in',
+                  timestamp: new Date(),
+                  rawBytes: msg,
+                  renderFormatAtTime: settings.displayFormat,
+                  characteristicId: evt.characteristicId,
+                  serviceId: evt.serviceId,
+                  deviceId: evt.deviceId
+                };
+                dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
+              }
+            }
+          } else {
+            // Echoed write: just record outbound
+            const consoleEntry: ConsoleEntry = {
+              id: `${evt.deviceId}-${evt.serviceId}-${evt.characteristicId}-${Date.now()}`,
+              direction: 'out',
+              timestamp: new Date(),
+              rawBytes: payload,
+              renderFormatAtTime: settings.displayFormat,
+              characteristicId: evt.characteristicId,
+              serviceId: evt.serviceId,
+              deviceId: evt.deviceId
+            };
+            dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
+          }
           dispatch({ type: 'CHARACTERISTIC_VALUE_RECEIVED', payload: { ...evt } });
         };
 

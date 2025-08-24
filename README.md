@@ -38,3 +38,10 @@ npm run electron:build
 ```
 
 This will create distributable packages in the `release` directory for your platform (macOS, Windows, Linux).
+
+
+
+
+for the framing have a option to create two different delimiters for start and end depening if its a received vs sent message
+
+so in the same line in the framing, have right bound have a toggle switch for deciding if you want to have seperate chars for sendind and receiving or 
