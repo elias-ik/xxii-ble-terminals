@@ -319,26 +319,15 @@ export const webBluetoothClient: BLEClient = {
       const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
       const value = await ch.readValue();
       const bytes = new Uint8Array(value.buffer);
-      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-      emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: hex, direction: 'read' });
+      emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: bytes, direction: 'read' });
     } catch (error: any) {
       log.error('read() failed', { serviceId, characteristicId, error });
     }
   },
-  async write(deviceId, serviceId, characteristicId, data) {
+  async write(deviceId, serviceId, characteristicId, data: Uint8Array) {
     try {
       const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
-      const compact = String(data).replace(/\s+/g, '').toUpperCase();
-      let toWrite: Uint8Array;
-      if (compact.length > 0 && compact.length % 2 === 0 && /^[0-9A-F]+$/.test(compact)) {
-        const arr: number[] = [];
-        for (let i = 0; i < compact.length; i += 2) arr.push(parseInt(compact.slice(i, i + 2), 16));
-        toWrite = new Uint8Array(arr);
-      } else {
-        // Fallback to UTF-8 encoding if not hex-like
-        toWrite = new TextEncoder().encode(String(data));
-      }
-      await ch.writeValue(toWrite);
+      await ch.writeValue(data);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'write' });
     } catch (error: any) {
       log.error('write() failed', { serviceId, characteristicId, error });
@@ -349,10 +338,9 @@ export const webBluetoothClient: BLEClient = {
       const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
       const listener = (ev: Event) => {
         const target = ev.target as any;
-        const dv = target?.value;
+        const dv = target?.value as DataView | undefined;
         const bytes = dv ? new Uint8Array(dv.buffer) : new Uint8Array();
-        const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
-        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: hex, direction: 'notification' });
+        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: bytes, direction: 'notification' });
       };
       await ch.startNotifications();
       ch.addEventListener('characteristicvaluechanged', listener);

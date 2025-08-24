@@ -1,5 +1,5 @@
 import type { BLEClient, BLEEventMap } from './client';
-import type { Connection, ConsoleEntry } from '@/lib/ble-store';
+import type { Connection } from '@/lib/ble-store';
 
 type Handler<K extends keyof BLEEventMap> = (payload: BLEEventMap[K]) => void;
 
@@ -53,71 +53,36 @@ export const mockBLEClient: BLEClient = {
         deviceId,
         connected: true,
         services: {
-          // Device Information Service
-          '180A': {
-            uuid: '180A',
-            name: 'Device Information',
-            characteristics: {
-              '2a29': { uuid: '2a29', name: 'Manufacturer Name', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false },
-              '2a24': { uuid: '2a24', name: 'Model Number', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false },
-              '2a26': { uuid: '2a26', name: 'Firmware Revision', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false },
-              '2a27': { uuid: '2a27', name: 'Hardware Revision', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false }
-            }
-          },
-          // Battery Service
-          '180F': {
-            uuid: '180F',
-            name: 'Battery Service',
-            characteristics: {
-              '2a19': { uuid: '2a19', name: 'Battery Level', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
-            }
-          },
-          // Heart Rate Service
-          '180D': {
-            uuid: '180D',
-            name: 'Heart Rate',
-            characteristics: {
-              '2a37': { uuid: '2a37', name: 'Heart Rate Measurement', capabilities: { read: false, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false },
-              '2a38': { uuid: '2a38', name: 'Body Sensor Location', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false }
-            }
-          },
-          // Environmental Sensing
-          '181A': {
-            uuid: '181A',
-            name: 'Environmental Sensing',
-            characteristics: {
-              '2a6e': { uuid: '2a6e', name: 'Temperature', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false },
-              '2a6f': { uuid: '2a6f', name: 'Humidity', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false },
-              '2a6d': { uuid: '2a6d', name: 'Pressure', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
-            }
-          },
-          // UART/NUS-like custom service
-          '6E400001-B5A3-F393-E0A9-E50E24DCCA9E': {
-            uuid: '6E400001-B5A3-F393-E0A9-E50E24DCCA9E',
-            name: 'UART Service',
-            characteristics: {
-              'uart-tx': { uuid: 'uart-tx', name: 'UART TX', capabilities: { read: false, write: true, writeNoResp: true, notify: false, indicate: false }, subscribed: false },
-              'uart-rx': { uuid: 'uart-rx', name: 'UART RX', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
-            }
-          },
-          // Control service
-          'custom-control': {
-            uuid: 'custom-control',
-            name: 'Control Service',
-            characteristics: {
-              'led-toggle': { uuid: 'led-toggle', name: 'LED Toggle', capabilities: { read: false, write: true, writeNoResp: true, notify: false, indicate: false }, subscribed: false },
-              'status': { uuid: 'status', name: 'Status', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
-            }
-          },
-          // Custom demo service
-          'custom-service': {
-            uuid: 'custom-service',
-            name: 'Custom Service',
-            characteristics: {
-              'custom-char-1': { uuid: 'custom-char-1', name: 'Custom Characteristic 1', capabilities: { read: true, write: true, writeNoResp: true, notify: true, indicate: false }, subscribed: false },
-              'custom-char-2': { uuid: 'custom-char-2', name: 'Custom Characteristic 2', capabilities: { read: false, write: true, writeNoResp: false, notify: false, indicate: true }, subscribed: false }
-            }
-          }
+          '180A': { uuid: '180A', name: 'Device Information', characteristics: {
+            '2a29': { uuid: '2a29', name: 'Manufacturer Name', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false },
+            '2a24': { uuid: '2a24', name: 'Model Number', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false },
+            '2a26': { uuid: '2a26', name: 'Firmware Revision', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false },
+            '2a27': { uuid: '2a27', name: 'Hardware Revision', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false }
+          } },
+          '180F': { uuid: '180F', name: 'Battery Service', characteristics: {
+            '2a19': { uuid: '2a19', name: 'Battery Level', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
+          } },
+          '180D': { uuid: '180D', name: 'Heart Rate', characteristics: {
+            '2a37': { uuid: '2a37', name: 'Heart Rate Measurement', capabilities: { read: false, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false },
+            '2a38': { uuid: '2a38', name: 'Body Sensor Location', capabilities: { read: true, write: false, writeNoResp: false, notify: false, indicate: false }, subscribed: false }
+          } },
+          '181A': { uuid: '181A', name: 'Environmental Sensing', characteristics: {
+            '2a6e': { uuid: '2a6e', name: 'Temperature', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false },
+            '2a6f': { uuid: '2a6f', name: 'Humidity', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false },
+            '2a6d': { uuid: '2a6d', name: 'Pressure', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
+          } },
+          '6E400001-B5A3-F393-E0A9-E50E24DCCA9E': { uuid: '6E400001-B5A3-F393-E0A9-E50E24DCCA9E', name: 'UART Service', characteristics: {
+            'uart-tx': { uuid: 'uart-tx', name: 'UART TX', capabilities: { read: false, write: true, writeNoResp: true, notify: false, indicate: false }, subscribed: false },
+            'uart-rx': { uuid: 'uart-rx', name: 'UART RX', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
+          } },
+          'custom-control': { uuid: 'custom-control', name: 'Control Service', characteristics: {
+            'led-toggle': { uuid: 'led-toggle', name: 'LED Toggle', capabilities: { read: false, write: true, writeNoResp: true, notify: false, indicate: false }, subscribed: false },
+            'status': { uuid: 'status', name: 'Status', capabilities: { read: true, write: false, writeNoResp: false, notify: true, indicate: false }, subscribed: false }
+          } },
+          'custom-service': { uuid: 'custom-service', name: 'Custom Service', characteristics: {
+            'custom-char-1': { uuid: 'custom-char-1', name: 'Custom Characteristic 1', capabilities: { read: true, write: true, writeNoResp: true, notify: true, indicate: false }, subscribed: false },
+            'custom-char-2': { uuid: 'custom-char-2', name: 'Custom Characteristic 2', capabilities: { read: false, write: true, writeNoResp: false, notify: false, indicate: true }, subscribed: false }
+          } }
         },
         connectedAt: new Date()
       };
@@ -134,22 +99,21 @@ export const mockBLEClient: BLEClient = {
   },
   async read(deviceId, serviceId, characteristicId) {
     setTimeout(() => {
-      // Return HEX-like byte strings to keep transport encoding-agnostic
+      // Emit bytes; UI will render as HEX/ASCII
       const sampleText = `Mock-${characteristicId}`;
-      const bytes = new TextEncoder().encode(sampleText);
-      const value = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+      const value = new TextEncoder().encode(sampleText);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'read' });
     }, 200);
   },
-  async write(deviceId, serviceId, characteristicId, data) {
+  async write(deviceId, serviceId, characteristicId, data: Uint8Array) {
     // echo write outbound event to UI through existing store path; here emit inbound only if subscribed
     const svc = mockConnections[deviceId]?.services?.[serviceId];
     const ch = svc?.characteristics?.[characteristicId];
     const isSubscribed = !!ch?.subscribed;
     if (isSubscribed) {
       setTimeout(() => {
-        // Pass through exactly what was written, no decoding
-        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: String(data), direction: 'notification' });
+        // Pass through exactly what was written
+        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'notification' });
       }, 200);
     }
   },
@@ -160,10 +124,9 @@ export const mockBLEClient: BLEClient = {
     emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'started' });
     // periodic notifications
     const intervalId = setInterval(() => {
-      // Emit encoded HEX-like payload; UI decides how to render
+      // Emit bytes; UI will render
       const payload = `N-${characteristicId}-${Date.now()}`;
-      const bytes = new TextEncoder().encode(payload);
-      const value = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+      const value = new TextEncoder().encode(payload);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'notification' });
     }, 5000);
     (window as any).__mockIntervals = (window as any).__mockIntervals || {};
