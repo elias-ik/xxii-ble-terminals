@@ -67,6 +67,9 @@ export interface DeviceSettings {
   sendFormat: 'HEX' | 'UTF8' | 'ASCII';
   displayFormat: 'HEX' | 'UTF8' | 'ASCII';
   hexFillerPosition: 'beginning' | 'end';
+  // Framing
+  messageStart: string; // e.g. "\x02" for STX, "" for none, or custom
+  messageDelimiter: string; // e.g. "\x03" for ETX, "\n", "\r\n", ",", or custom
 }
 
 export interface ScanStatus {

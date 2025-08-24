@@ -20,12 +20,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
   const currentSettings = getDeviceSettings(deviceId);
   
   const [settings, setSettings] = useState<DeviceSettings>(currentSettings);
-  const [hexTestInput, setHexTestInput] = useState("");
-  const [hexValidation, setHexValidation] = useState<{
-    isValid: boolean;
-    error?: string;
-    formatted?: string;
-  } | null>(null);
+  const [customStart, setCustomStart] = useState<string>("");
+  const [customDelimiter, setCustomDelimiter] = useState<string>("");
 
   const handleSettingChange = (key: keyof DeviceSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
@@ -33,17 +29,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
     setDeviceSettings(deviceId, newSettings);
   };
 
-  const handleHexTestInput = (input: string) => {
-    setHexTestInput(input);
-    
-    if (!input.trim()) {
-      setHexValidation(null);
-      return;
-    }
-
-    const { validateHexInput } = useBLEStore.getState();
-    const validation = validateHexInput(input, settings.hexFillerPosition);
-    setHexValidation(validation);
+  const updateFraming = (key: 'messageStart' | 'messageDelimiter', value: string) => {
+    handleSettingChange(key, value);
   };
 
   const handleSave = () => {
@@ -53,140 +40,148 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
 
   const handleCancel = () => {
     setSettings(currentSettings);
-    setHexTestInput("");
-    setHexValidation(null);
+    setCustomStart("");
+    setCustomDelimiter("");
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
-            I/O Format Settings
+            Console Settings
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-6">
-          {/* Send Format Settings */}
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
+          {/* Formatting Category */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Send Format</Label>
-            <Select
-              value={settings.sendFormat}
-              onValueChange={(value: 'HEX' | 'UTF8' | 'ASCII') => 
-                handleSettingChange('sendFormat', value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="HEX">HEX</SelectItem>
-                <SelectItem value="ASCII">ASCII</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Format for data sent to the device
-            </p>
-          </div>
-
-          <Separator />
-
-          {/* Display Format Settings */}
-          <div className="space-y-3">
-            <Label className="text-sm font-medium">Display Format</Label>
-            <Select
-              value={settings.displayFormat}
-              onValueChange={(value: 'HEX' | 'UTF8' | 'ASCII') => 
-                handleSettingChange('displayFormat', value)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="HEX">HEX</SelectItem>
-                <SelectItem value="ASCII">ASCII</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Format for displaying console responses
-            </p>
-          </div>
-
-          <Separator />
-
-          {/* HEX Filler Position Settings */}
-          {settings.sendFormat === 'HEX' && (
-            <>
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">HEX Filler Position</Label>
-                <RadioGroup
-                  value={settings.hexFillerPosition}
-                  onValueChange={(value: 'beginning' | 'end') => 
-                    handleSettingChange('hexFillerPosition', value)
-                  }
+            <Label className="text-sm font-semibold">Formatting</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+              <div className="space-y-2">
+                <Label className="text-sm">Send Format</Label>
+                <Select
+                  value={settings.sendFormat}
+                  onValueChange={(value: 'HEX' | 'UTF8' | 'ASCII') => handleSettingChange('sendFormat', value)}
                 >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="beginning" id="beginning" />
-                    <Label htmlFor="beginning" className="text-sm">Beginning</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="end" id="end" />
-                    <Label htmlFor="end" className="text-sm">End</Label>
-                  </div>
-                </RadioGroup>
-                <p className="text-xs text-muted-foreground">
-                  Where to insert filler byte for odd-length HEX input
-                </p>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HEX">HEX</SelectItem>
+                    <SelectItem value="ASCII">ASCII</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Separator />
-
-              {/* HEX Input Test */}
-              <div className="space-y-3">
-                <Label className="text-sm font-medium">HEX Input Test</Label>
-                <input
-                  type="text"
-                  placeholder="Enter HEX input to test..."
-                  value={hexTestInput}
-                  onChange={(e) => handleHexTestInput(e.target.value)}
-                  className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
-                />
-                
-                {hexValidation && (
-                  <Alert className={hexValidation.isValid ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20" : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20"}>
-                    <div className="flex items-center gap-2">
-                      {hexValidation.isValid ? (
-                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                      )}
-                      <AlertDescription className="text-sm">
-                        {hexValidation.isValid ? (
-                          <span className="text-green-800 dark:text-green-200">
-                            Valid HEX input. Formatted: <code className="bg-green-100 dark:bg-green-900/30 px-1 rounded">{hexValidation.formatted}</code>
-                          </span>
-                        ) : (
-                          <span className="text-red-800 dark:text-red-200">
-                            {hexValidation.error}
-                          </span>
-                        )}
-                      </AlertDescription>
+              {settings.sendFormat === 'HEX' && (
+                <div className="space-y-2">
+                  <Label className="text-sm">HEX Filler Position</Label>
+                  <RadioGroup
+                    value={settings.hexFillerPosition}
+                    onValueChange={(value: 'beginning' | 'end') => handleSettingChange('hexFillerPosition', value)}
+                    className="flex items-center gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="beginning" id="beginning" />
+                      <Label htmlFor="beginning" className="text-sm">Beginning</Label>
                     </div>
-                  </Alert>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="end" id="end" />
+                      <Label htmlFor="end" className="text-sm">End</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Display Format</Label>
+              <Select
+                value={settings.displayFormat}
+                onValueChange={(value: 'HEX' | 'UTF8' | 'ASCII') => handleSettingChange('displayFormat', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HEX">HEX</SelectItem>
+                  <SelectItem value="ASCII">ASCII</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Framing Category */}
+          <div className="space-y-3">
+            <Label className="text-sm font-semibold">Framing</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="text-sm">Message Start</Label>
+                <Select
+                  value={settings.messageStart || ''}
+                  onValueChange={(value: string) => updateFraming('messageStart', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="\x02">STX (0x02)</SelectItem>
+                    <SelectItem value="custom">Custom…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {settings.messageStart === 'custom' && (
+                  <input
+                    type="text"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    onBlur={() => updateFraming('messageStart', customStart)}
+                    placeholder="e.g. \\xAA or ,"
+                    className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
+                  />
                 )}
-                
-                <p className="text-xs text-muted-foreground">
-                  Test HEX input validation and formatting
-                </p>
               </div>
-            </>
-          )}
+
+              <div className="space-y-2">
+                <Label className="text-sm">Message Delimiter</Label>
+                <Select
+                  value={settings.messageDelimiter || ''}
+                  onValueChange={(value: string) => updateFraming('messageDelimiter', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="\x03">ETX (0x03)</SelectItem>
+                    <SelectItem value="\n">\n</SelectItem>
+                    <SelectItem value="\r\n">\r\n</SelectItem>
+                    <SelectItem value=",">,</SelectItem>
+                    <SelectItem value="custom">Custom…</SelectItem>
+                  </SelectContent>
+                </Select>
+                {settings.messageDelimiter === 'custom' && (
+                  <input
+                    type="text"
+                    value={customDelimiter}
+                    onChange={(e) => setCustomDelimiter(e.target.value)}
+                    onBlur={() => updateFraming('messageDelimiter', customDelimiter)}
+                    placeholder="e.g. \\x03 or ;"
+                    className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Separator />
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
