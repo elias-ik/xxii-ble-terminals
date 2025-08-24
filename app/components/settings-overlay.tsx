@@ -23,6 +23,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
   const [settings, setSettings] = useState<DeviceSettings>(currentSettings);
   const [customStart, setCustomStart] = useState<string>("");
   const [customDelimiter, setCustomDelimiter] = useState<string>("");
+  const [rxCustomStart, setRxCustomStart] = useState<string>("");
+  const [rxCustomDelimiter, setRxCustomDelimiter] = useState<string>("");
 
   const handleSettingChange = (key: keyof DeviceSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
@@ -257,8 +259,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                           if (value === 'none') handleSettingChange('rxStart', '');
                           else if (value === 'stx') handleSettingChange('rxStart', '\x02');
                           else {
-                            const lit = customStart && customStart.length > 0 ? customStart : '\\x';
-                            setCustomStart(lit);
+                            const lit = rxCustomStart && rxCustomStart.length > 0 ? rxCustomStart : '\\x';
+                            setRxCustomStart(lit);
                             handleSettingChange('rxStart', lit);
                           }
                         }}>
@@ -277,7 +279,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                       const startKnown = ['\x02'];
                       const startSelectValue = (!settings.rxStart || settings.rxStart === '') ? 'none' : (startKnown.includes(settings.rxStart) ? 'stx' : 'custom');
                       return startSelectValue === 'custom' && (
-                        <input type="text" value={customStart} onChange={(e) => setCustomStart(e.target.value)} onBlur={() => handleSettingChange('rxStart', customStart)} placeholder="e.g. \\xAA or ," className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
+                        <input type="text" value={rxCustomStart} onChange={(e) => setRxCustomStart(e.target.value)} onBlur={() => handleSettingChange('rxStart', rxCustomStart)} placeholder="e.g. \\xAA or ," className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
                       );
                     })()}
                   </div>
@@ -299,8 +301,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                           else if (value === 'crlf') handleSettingChange('rxDelimiter', '\r\n');
                           else if (value === 'comma') handleSettingChange('rxDelimiter', ',');
                           else {
-                            const lit = customDelimiter && customDelimiter.length > 0 ? customDelimiter : '\\x';
-                            setCustomDelimiter(lit);
+                            const lit = rxCustomDelimiter && rxCustomDelimiter.length > 0 ? rxCustomDelimiter : '\\x';
+                            setRxCustomDelimiter(lit);
                             handleSettingChange('rxDelimiter', lit);
                           }
                         }}>
@@ -327,7 +329,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                         settings.rxDelimiter === ',' ? 'comma' : 'custom'
                       );
                       return delimSelectValue === 'custom' && (
-                        <input type="text" value={customDelimiter} onChange={(e) => setCustomDelimiter(e.target.value)} onBlur={() => handleSettingChange('rxDelimiter', customDelimiter)} placeholder="e.g. \\x03 or ;" className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
+                        <input type="text" value={rxCustomDelimiter} onChange={(e) => setRxCustomDelimiter(e.target.value)} onBlur={() => handleSettingChange('rxDelimiter', rxCustomDelimiter)} placeholder="e.g. \\x03 or ;" className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
                       );
                     })()}
                   </div>
