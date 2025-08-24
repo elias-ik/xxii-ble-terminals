@@ -120,7 +120,7 @@ export type BLEAction =
   | { type: 'SIDEBAR_COLLAPSE_TOGGLED'; payload: { collapsed: boolean } }
   
   // Characteristic Operations
-  | { type: 'CHARACTERISTIC_VALUE_RECEIVED'; payload: { deviceId: string; serviceId: string; characteristicId: string; value: string; direction: 'read' | 'write' | 'notification' } }
+  | { type: 'CHARACTERISTIC_VALUE_RECEIVED'; payload: { deviceId: string; serviceId: string; characteristicId: string; value: Uint8Array; direction: 'read' | 'write' | 'notification' } }
   | { type: 'SUBSCRIPTION_STARTED'; payload: { deviceId: string; serviceId: string; characteristicId: string } }
   | { type: 'SUBSCRIPTION_STOPPED'; payload: { deviceId: string; serviceId: string; characteristicId: string } };
 
@@ -775,12 +775,9 @@ export const useBLEStore = create<BLEState>()(
           }
         };
 
-        const onCharacteristicValue = (evt: { deviceId: string; serviceId: string; characteristicId: string; value: string; direction: 'read' | 'write' | 'notification' }) => {
+        const onCharacteristicValue = (evt: { deviceId: string; serviceId: string; characteristicId: string; value: Uint8Array; direction: 'read' | 'write' | 'notification' }) => {
           const settings = selectors.getDeviceSettings(get(), evt.deviceId);
-          // If value looks like hex (even-length, hex chars and spaces), parse to bytes, else treat as UTF8 text
-          const compact = evt.value.replace(/\s+/g, '').toUpperCase();
-          const isHexLike = compact.length > 0 && compact.length % 2 === 0 && /^[0-9A-F]+$/.test(compact);
-          const rawBytes = isHexLike ? hexStringToBytes(compact) : new TextEncoder().encode(evt.value);
+          const rawBytes = evt.value instanceof Uint8Array ? evt.value : new Uint8Array();
           const consoleEntry: ConsoleEntry = {
             id: `${evt.deviceId}-${evt.serviceId}-${evt.characteristicId}-${Date.now()}`,
             direction: evt.direction === 'write' ? 'out' : 'in',
@@ -903,7 +900,7 @@ export const useBLEStore = create<BLEState>()(
           };
           get().dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
           const ble = (window as any).bleAPI;
-          await ble.write(deviceId, serviceId, characteristicId, formattedData);
+          await ble.write(deviceId, serviceId, characteristicId, rawBytes);
         } catch (error) {
           console.error('Write failed:', error);
         }
