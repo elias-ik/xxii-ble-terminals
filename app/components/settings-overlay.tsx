@@ -121,20 +121,33 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label className="text-sm">Message Start</Label>
+                {(() => {
+                  const startKnown = ['\x02'];
+                  const startSelectValue = (!settings.messageStart || settings.messageStart === '')
+                    ? 'none'
+                    : (startKnown.includes(settings.messageStart) ? settings.messageStart : 'custom');
+                  return (
                 <Select
-                  value={settings.messageStart || ''}
-                  onValueChange={(value: string) => updateFraming('messageStart', value)}
+                  value={startSelectValue}
+                  onValueChange={(value: string) => updateFraming('messageStart', value === 'none' ? '' : value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     <SelectItem value="\x02">STX (0x02)</SelectItem>
                     <SelectItem value="custom">Custom…</SelectItem>
                   </SelectContent>
                 </Select>
-                {settings.messageStart === 'custom' && (
+                  );
+                })()}
+                {(() => {
+                  const startKnown = ['\x02'];
+                  const startSelectValue = (!settings.messageStart || settings.messageStart === '')
+                    ? 'none'
+                    : (startKnown.includes(settings.messageStart) ? settings.messageStart : 'custom');
+                  return startSelectValue === 'custom' && (
                   <input
                     type="text"
                     value={customStart}
@@ -143,20 +156,27 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     placeholder="e.g. \\xAA or ,"
                     className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
                   />
-                )}
+                  );
+                })()}
               </div>
 
               <div className="space-y-2">
                 <Label className="text-sm">Message Delimiter</Label>
+                {(() => {
+                  const delimKnown = ['\x03', '\n', '\r\n', ','];
+                  const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
+                    ? 'none'
+                    : (delimKnown.includes(settings.messageDelimiter) ? settings.messageDelimiter : 'custom');
+                  return (
                 <Select
-                  value={settings.messageDelimiter || ''}
-                  onValueChange={(value: string) => updateFraming('messageDelimiter', value)}
+                  value={delimSelectValue}
+                  onValueChange={(value: string) => updateFraming('messageDelimiter', value === 'none' ? '' : value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     <SelectItem value="\x03">ETX (0x03)</SelectItem>
                     <SelectItem value="\n">\n</SelectItem>
                     <SelectItem value="\r\n">\r\n</SelectItem>
@@ -164,7 +184,14 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     <SelectItem value="custom">Custom…</SelectItem>
                   </SelectContent>
                 </Select>
-                {settings.messageDelimiter === 'custom' && (
+                  );
+                })()}
+                {(() => {
+                  const delimKnown = ['\x03', '\n', '\r\n', ','];
+                  const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
+                    ? 'none'
+                    : (delimKnown.includes(settings.messageDelimiter) ? settings.messageDelimiter : 'custom');
+                  return delimSelectValue === 'custom' && (
                   <input
                     type="text"
                     value={customDelimiter}
@@ -173,7 +200,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     placeholder="e.g. \\x03 or ;"
                     className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
                   />
-                )}
+                  );
+                })()}
               </div>
             </div>
           </div>
