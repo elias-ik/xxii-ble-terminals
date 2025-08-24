@@ -6,7 +6,11 @@ type Handler<K extends keyof BLEEventMap> = (payload: BLEEventMap[K]) => void;
 class Emitter {
   private handlers: { [K in keyof BLEEventMap]?: Set<Handler<K>> } = {} as any;
   on<K extends keyof BLEEventMap>(event: K, handler: Handler<K>) {
-    const set = (this.handlers[event] ??= new Set());
+    let set = this.handlers[event] as Set<Handler<K>> | undefined;
+    if (!set) {
+      set = new Set<Handler<K>>();
+      (this.handlers as any)[event] = set as any;
+    }
     set.add(handler as any);
   }
   off<K extends keyof BLEEventMap>(event: K, handler: Handler<K>) {
@@ -130,19 +134,10 @@ export const mockBLEClient: BLEClient = {
   },
   async read(deviceId, serviceId, characteristicId) {
     setTimeout(() => {
-      let value = `Mock read from ${characteristicId}`;
-      switch (characteristicId) {
-        case '2a19': value = `${Math.floor(20 + Math.random() * 80)}%`; break; // Battery
-        case '2a6e': value = `${(18 + Math.random() * 10).toFixed(1)} °C`; break; // Temp
-        case '2a6f': value = `${Math.floor(30 + Math.random() * 50)} %RH`; break; // Humidity
-        case '2a6d': value = `${(980 + Math.random() * 50).toFixed(1)} hPa`; break; // Pressure
-        case '2a38': value = 'Wrist'; break; // Sensor location
-        case '2a29': value = 'XXII Electronics'; break;
-        case '2a24': value = 'BLE-Terminal-Pro'; break;
-        case '2a26': value = '1.0.4'; break;
-        case '2a27': value = 'Rev-B'; break;
-        case 'uart-rx': value = 'READY'; break;
-      }
+      // Return HEX-like byte strings to keep transport encoding-agnostic
+      const sampleText = `Mock-${characteristicId}`;
+      const bytes = new TextEncoder().encode(sampleText);
+      const value = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'read' });
     }, 200);
   },
@@ -153,18 +148,8 @@ export const mockBLEClient: BLEClient = {
     const isSubscribed = !!ch?.subscribed;
     if (isSubscribed) {
       setTimeout(() => {
-        // If data looks like HEX, decode bytes to printable ASCII; otherwise echo as-is
-        const compact = String(data).replace(/\s+/g, '').toUpperCase();
-        const isHexLike = compact.length > 0 && compact.length % 2 === 0 && /^[0-9A-F]+$/.test(compact);
-        let decoded = String(data);
-        if (isHexLike) {
-          const bytes: number[] = [];
-          for (let i = 0; i < compact.length; i += 2) {
-            bytes.push(parseInt(compact.slice(i, i + 2), 16));
-          }
-          decoded = bytes.map(b => (b >= 0x20 && b <= 0x7E ? String.fromCharCode(b) : '.')).join('');
-        }
-        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: `Echo ${decoded}`, direction: 'notification' });
+        // Pass through exactly what was written, no decoding
+        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: String(data), direction: 'notification' });
       }, 200);
     }
   },
@@ -175,20 +160,10 @@ export const mockBLEClient: BLEClient = {
     emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'started' });
     // periodic notifications
     const intervalId = setInterval(() => {
-      let value = `Notify ${Date.now()}`;
-      switch (characteristicId) {
-        case '2a19': value = `${Math.max(5, Math.floor(15 + Math.random() * 85))}%`; break;
-        case '2a6e': value = `${(18 + Math.random() * 10).toFixed(1)} °C`; break;
-        case '2a6f': value = `${Math.floor(30 + Math.random() * 50)} %RH`; break;
-        case '2a6d': value = `${(980 + Math.random() * 50).toFixed(1)} hPa`; break;
-        case '2a37': value = `${Math.floor(55 + Math.random() * 65)} bpm`; break;
-        case 'uart-rx': {
-          const msgs = ['OK', 'ACK', 'PING', 'PONG', 'DATA', 'READY'];
-          value = msgs[Math.floor(Math.random() * msgs.length)];
-          break;
-        }
-        case 'status': value = Math.random() > 0.5 ? 'OK' : 'WARN'; break;
-      }
+      // Emit encoded HEX-like payload; UI decides how to render
+      const payload = `N-${characteristicId}-${Date.now()}`;
+      const bytes = new TextEncoder().encode(payload);
+      const value = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'notification' });
     }, 5000);
     (window as any).__mockIntervals = (window as any).__mockIntervals || {};
