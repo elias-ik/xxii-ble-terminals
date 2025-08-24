@@ -328,6 +328,8 @@ export const webBluetoothClient: BLEClient = {
     try {
       const ch = await getNativeCharacteristic(deviceId, serviceId, characteristicId);
       await ch.writeValue(data);
+      const asText = new TextDecoder().decode(data);
+      log.info('write()', { serviceId, characteristicId, data: asText });
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'write' });
     } catch (error: any) {
       log.error('write() failed', { serviceId, characteristicId, error });
@@ -340,6 +342,8 @@ export const webBluetoothClient: BLEClient = {
         const target = ev.target as any;
         const dv = target?.value as DataView | undefined;
         const bytes = dv ? new Uint8Array(dv.buffer) : new Uint8Array();
+        const asText = new TextDecoder().decode(bytes);
+        log.info('subscribe()', { serviceId, characteristicId, value: asText });
         emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: bytes, direction: 'notification' });
       };
       await ch.startNotifications();
