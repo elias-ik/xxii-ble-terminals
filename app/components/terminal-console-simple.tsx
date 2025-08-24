@@ -186,14 +186,13 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
         }
       }
       case 'ASCII': {
-        // Render with JSON-style escapes for non-printable characters
+        // Render with escapes for ALL non-printables; do not escape double quote
         const parts: string[] = [];
         for (const b of bytes) {
           if (b === 0x0A) { parts.push('\\n'); continue; }
           if (b === 0x0D) { parts.push('\\r'); continue; }
           if (b === 0x09) { parts.push('\\t'); continue; }
           if (b === 0x5C) { parts.push('\\\\'); continue; } // backslash
-          if (b === 0x22) { parts.push('\\"'); continue; } // quote
           if (b >= 0x20 && b <= 0x7E) { parts.push(String.fromCharCode(b)); continue; }
           parts.push('\\x' + b.toString(16).padStart(2, '0').toUpperCase());
         }
