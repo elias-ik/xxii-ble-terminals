@@ -186,10 +186,18 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
         }
       }
       case 'ASCII': {
-        // Render printable ASCII, non-printable as '.'
-        return Array.from(bytes)
-          .map(b => (b >= 0x20 && b <= 0x7E ? String.fromCharCode(b) : '.'))
-          .join('');
+        // Render with JSON-style escapes for non-printable characters
+        const parts: string[] = [];
+        for (const b of bytes) {
+          if (b === 0x0A) { parts.push('\\n'); continue; }
+          if (b === 0x0D) { parts.push('\\r'); continue; }
+          if (b === 0x09) { parts.push('\\t'); continue; }
+          if (b === 0x5C) { parts.push('\\\\'); continue; } // backslash
+          if (b === 0x22) { parts.push('\\"'); continue; } // quote
+          if (b >= 0x20 && b <= 0x7E) { parts.push(String.fromCharCode(b)); continue; }
+          parts.push('\\x' + b.toString(16).padStart(2, '0').toUpperCase());
+        }
+        return parts.join('');
       }
       default:
         return '';
