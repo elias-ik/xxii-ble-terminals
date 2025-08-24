@@ -125,18 +125,22 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   const startKnown = ['\x02'];
                   const startSelectValue = (!settings.messageStart || settings.messageStart === '')
                     ? 'none'
-                    : (startKnown.includes(settings.messageStart) ? settings.messageStart : 'custom');
+                    : (startKnown.includes(settings.messageStart) ? 'stx' : 'custom');
                   return (
                 <Select
                   value={startSelectValue}
-                  onValueChange={(value: string) => updateFraming('messageStart', value === 'none' ? '' : value)}
+                  onValueChange={(value: string) => {
+                    if (value === 'none') updateFraming('messageStart', '');
+                    else if (value === 'stx') updateFraming('messageStart', '\\x02');
+                    else updateFraming('messageStart', customStart);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="\x02">STX (0x02)</SelectItem>
+                    <SelectItem value="stx">STX (0x02)</SelectItem>
                     <SelectItem value="custom">Custom…</SelectItem>
                   </SelectContent>
                 </Select>
@@ -146,7 +150,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   const startKnown = ['\x02'];
                   const startSelectValue = (!settings.messageStart || settings.messageStart === '')
                     ? 'none'
-                    : (startKnown.includes(settings.messageStart) ? settings.messageStart : 'custom');
+                    : (startKnown.includes(settings.messageStart) ? 'stx' : 'custom');
                   return startSelectValue === 'custom' && (
                   <input
                     type="text"
@@ -166,21 +170,33 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   const delimKnown = ['\x03', '\n', '\r\n', ','];
                   const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
                     ? 'none'
-                    : (delimKnown.includes(settings.messageDelimiter) ? settings.messageDelimiter : 'custom');
+                    : (delimKnown.includes(settings.messageDelimiter) ? (
+                        settings.messageDelimiter === '\\x03' ? 'etx' :
+                        settings.messageDelimiter === '\\n' ? 'lf' :
+                        settings.messageDelimiter === '\\r\\n' ? 'crlf' :
+                        settings.messageDelimiter === ',' ? 'comma' : 'custom'
+                      ) : 'custom');
                   return (
                 <Select
                   value={delimSelectValue}
-                  onValueChange={(value: string) => updateFraming('messageDelimiter', value === 'none' ? '' : value)}
+                  onValueChange={(value: string) => {
+                    if (value === 'none') updateFraming('messageDelimiter', '');
+                    else if (value === 'etx') updateFraming('messageDelimiter', '\\x03');
+                    else if (value === 'lf') updateFraming('messageDelimiter', '\\n');
+                    else if (value === 'crlf') updateFraming('messageDelimiter', '\\r\\n');
+                    else if (value === 'comma') updateFraming('messageDelimiter', ',');
+                    else updateFraming('messageDelimiter', customDelimiter);
+                  }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="\x03">ETX (0x03)</SelectItem>
-                    <SelectItem value="\n">\n</SelectItem>
-                    <SelectItem value="\r\n">\r\n</SelectItem>
-                    <SelectItem value=",">,</SelectItem>
+                    <SelectItem value="etx">ETX (0x03)</SelectItem>
+                    <SelectItem value="lf">\n</SelectItem>
+                    <SelectItem value="crlf">\r\n</SelectItem>
+                    <SelectItem value="comma">,</SelectItem>
                     <SelectItem value="custom">Custom…</SelectItem>
                   </SelectContent>
                 </Select>
@@ -190,7 +206,12 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   const delimKnown = ['\x03', '\n', '\r\n', ','];
                   const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
                     ? 'none'
-                    : (delimKnown.includes(settings.messageDelimiter) ? settings.messageDelimiter : 'custom');
+                    : (delimKnown.includes(settings.messageDelimiter) ? (
+                        settings.messageDelimiter === '\\x03' ? 'etx' :
+                        settings.messageDelimiter === '\\n' ? 'lf' :
+                        settings.messageDelimiter === '\\r\\n' ? 'crlf' :
+                        settings.messageDelimiter === ',' ? 'comma' : 'custom'
+                      ) : 'custom');
                   return delimSelectValue === 'custom' && (
                   <input
                     type="text"
