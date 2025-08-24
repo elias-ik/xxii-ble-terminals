@@ -70,6 +70,10 @@ export interface DeviceSettings {
   // Framing
   messageStart: string; // e.g. "\x02" for STX, "" for none, or custom
   messageDelimiter: string; // e.g. "\x03" for ETX, "\n", "\r\n", ",", or custom
+  // Optional separate RX framing (if splitFraming is true)
+  splitFraming?: boolean;
+  rxStart?: string;
+  rxDelimiter?: string;
 }
 
 export interface ScanStatus {
@@ -573,7 +577,10 @@ export const selectors = {
       displayFormat: 'ASCII',
       hexFillerPosition: 'end',
       messageStart: '',
-      messageDelimiter: ''
+      messageDelimiter: '',
+      splitFraming: false,
+      rxStart: '',
+      rxDelimiter: ''
     },
   
   // UI per Device selector
@@ -821,8 +828,9 @@ export const useBLEStore = create<BLEState>()(
             combined.set(prev, 0);
             combined.set(payload, prev.length);
 
-            // Compute delimiter bytes
-            const delimiter = framingStringToBytes(settings.messageDelimiter || '');
+            // Compute delimiter bytes (use RX-specific if enabled)
+            const rxDelimStr = settings.splitFraming ? (settings.rxDelimiter || '') : (settings.messageDelimiter || '');
+            const delimiter = framingStringToBytes(rxDelimStr);
             if (delimiter.length === 0) {
               // No delimiter: push chunk as-is and store combined for potential future framing
               set((s) => ({ incomingBuffers: { ...s.incomingBuffers, [key]: combined } }));
