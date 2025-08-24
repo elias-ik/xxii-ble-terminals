@@ -879,18 +879,7 @@ export const useBLEStore = create<BLEState>()(
               }
             }
           } else {
-            // Echoed write: just record outbound
-            const consoleEntry: ConsoleEntry = {
-              id: `${evt.deviceId}-${evt.serviceId}-${evt.characteristicId}-${Date.now()}`,
-              direction: 'out',
-              timestamp: new Date(),
-              rawBytes: payload,
-              renderFormatAtTime: settings.displayFormat,
-              characteristicId: evt.characteristicId,
-              serviceId: evt.serviceId,
-              deviceId: evt.deviceId
-            };
-            dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
+            // Echoed write event: ignore to prevent duplicate outbound entries
           }
           dispatch({ type: 'CHARACTERISTIC_VALUE_RECEIVED', payload: { ...evt } });
         };
