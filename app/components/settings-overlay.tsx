@@ -131,7 +131,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   value={startSelectValue}
                   onValueChange={(value: string) => {
                     if (value === 'none') updateFraming('messageStart', '');
-                    else if (value === 'stx') updateFraming('messageStart', '\\x02');
+                    else if (value === 'stx') updateFraming('messageStart', '\x02');
                     else updateFraming('messageStart', customStart);
                   }}
                 >
@@ -171,9 +171,9 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
                     ? 'none'
                     : (delimKnown.includes(settings.messageDelimiter) ? (
-                        settings.messageDelimiter === '\\x03' ? 'etx' :
-                        settings.messageDelimiter === '\\n' ? 'lf' :
-                        settings.messageDelimiter === '\\r\\n' ? 'crlf' :
+                        settings.messageDelimiter === '\x03' ? 'etx' :
+                        settings.messageDelimiter === '\n' ? 'lf' :
+                        settings.messageDelimiter === '\r\n' ? 'crlf' :
                         settings.messageDelimiter === ',' ? 'comma' : 'custom'
                       ) : 'custom');
                   return (
@@ -181,9 +181,9 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   value={delimSelectValue}
                   onValueChange={(value: string) => {
                     if (value === 'none') updateFraming('messageDelimiter', '');
-                    else if (value === 'etx') updateFraming('messageDelimiter', '\\x03');
-                    else if (value === 'lf') updateFraming('messageDelimiter', '\\n');
-                    else if (value === 'crlf') updateFraming('messageDelimiter', '\\r\\n');
+                    else if (value === 'etx') updateFraming('messageDelimiter', '\x03');
+                    else if (value === 'lf') updateFraming('messageDelimiter', '\n');
+                    else if (value === 'crlf') updateFraming('messageDelimiter', '\r\n');
                     else if (value === 'comma') updateFraming('messageDelimiter', ',');
                     else updateFraming('messageDelimiter', customDelimiter);
                   }}
@@ -207,9 +207,9 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
                     ? 'none'
                     : (delimKnown.includes(settings.messageDelimiter) ? (
-                        settings.messageDelimiter === '\\x03' ? 'etx' :
-                        settings.messageDelimiter === '\\n' ? 'lf' :
-                        settings.messageDelimiter === '\\r\\n' ? 'crlf' :
+                        settings.messageDelimiter === '\x03' ? 'etx' :
+                        settings.messageDelimiter === '\n' ? 'lf' :
+                        settings.messageDelimiter === '\r\n' ? 'crlf' :
                         settings.messageDelimiter === ',' ? 'comma' : 'custom'
                       ) : 'custom');
                   return delimSelectValue === 'custom' && (
