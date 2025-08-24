@@ -148,11 +148,12 @@ export const webBluetoothClient: BLEClient = {
               seen.add(id);
               lastFoundAt = Date.now();
               // Suppress scan logs to reduce noise
+              const rssi: number = (device as any)?._adData?.rssi ?? -100;
               emitter.emit('deviceDiscovered', {
                 id,
                 name: deviceName,
                 address: id,
-                rssi: device?.rssi || -60,
+                rssi,
                 connected: false,
                 lastSeen: new Date(),
                 previouslyConnected: false,
