@@ -142,7 +142,11 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                   onValueChange={(value: string) => {
                     if (value === 'none') updateFraming('messageStart', '');
                     else if (value === 'stx') updateFraming('messageStart', '\x02');
-                    else updateFraming('messageStart', customStart);
+                    else {
+                      const lit = customStart && customStart.length > 0 ? customStart : '\\x';
+                      setCustomStart(lit);
+                      updateFraming('messageStart', lit);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -195,7 +199,11 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     else if (value === 'lf') updateFraming('messageDelimiter', '\n');
                     else if (value === 'crlf') updateFraming('messageDelimiter', '\r\n');
                     else if (value === 'comma') updateFraming('messageDelimiter', ',');
-                    else updateFraming('messageDelimiter', customDelimiter);
+                    else {
+                      const lit = customDelimiter && customDelimiter.length > 0 ? customDelimiter : '\\x';
+                      setCustomDelimiter(lit);
+                      updateFraming('messageDelimiter', lit);
+                    }
                   }}
                 >
                   <SelectTrigger>
@@ -248,7 +256,11 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                         <Select value={startSelectValue} onValueChange={(value: string) => {
                           if (value === 'none') handleSettingChange('rxStart', '');
                           else if (value === 'stx') handleSettingChange('rxStart', '\x02');
-                          else handleSettingChange('rxStart', customStart);
+                          else {
+                            const lit = customStart && customStart.length > 0 ? customStart : '\\x';
+                            setCustomStart(lit);
+                            handleSettingChange('rxStart', lit);
+                          }
                         }}>
                           <SelectTrigger>
                             <SelectValue placeholder="None" />
@@ -286,7 +298,11 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                           else if (value === 'lf') handleSettingChange('rxDelimiter', '\n');
                           else if (value === 'crlf') handleSettingChange('rxDelimiter', '\r\n');
                           else if (value === 'comma') handleSettingChange('rxDelimiter', ',');
-                          else handleSettingChange('rxDelimiter', customDelimiter);
+                          else {
+                            const lit = customDelimiter && customDelimiter.length > 0 ? customDelimiter : '\\x';
+                            setCustomDelimiter(lit);
+                            handleSettingChange('rxDelimiter', lit);
+                          }
                         }}>
                           <SelectTrigger>
                             <SelectValue placeholder="None" />
