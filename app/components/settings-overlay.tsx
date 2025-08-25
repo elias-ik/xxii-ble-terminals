@@ -185,7 +185,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
           {/* Framing Category */}
           <div className="relative">
             {framingDisabled && (
-              <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-md">
+              <div className="absolute inset-0 z-10 bg-background/50 flex items-center justify-center rounded-md">
                 <span className="text-xs text-muted-foreground">not available in demo</span>
               </div>
             )}
