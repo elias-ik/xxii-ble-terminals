@@ -26,6 +26,110 @@ const emitter = new Emitter();
 // Minimal internal state for mock
 const mockConnections: Record<string, Connection> = {};
 
+// Mock data generators for realistic characteristic values
+const mockDataGenerators = {
+  // Device Information Service (180A)
+  '2a29': () => new TextEncoder().encode('XXII Technologies'), // Manufacturer Name
+  '2a24': () => new TextEncoder().encode('BLE-Terminal-v1.2'), // Model Number
+  '2a26': () => new TextEncoder().encode('2.1.4'), // Firmware Revision
+  '2a27': () => new TextEncoder().encode('1.0.0'), // Hardware Revision
+
+  // Battery Service (180F)
+  '2a19': () => {
+    // Battery level as percentage (0-100)
+    const batteryLevel = Math.floor(Math.random() * 100) + 1;
+    return new TextEncoder().encode(`${batteryLevel}%`);
+  },
+
+  // Heart Rate Service (180D)
+  '2a37': () => {
+    // Heart rate measurement as readable text
+    const heartRate = Math.floor(Math.random() * 40) + 60; // 60-100 BPM
+    return new TextEncoder().encode(`${heartRate}bpm`);
+  },
+  '2a38': () => {
+    // Body sensor location as readable text
+    const locations = ['Chest', 'Wrist', 'Finger'];
+    const location = locations[Math.floor(Math.random() * locations.length)];
+    return new TextEncoder().encode(location);
+  },
+
+  // Environmental Sensing Service (181A)
+  '2a6e': () => {
+    // Temperature in Celsius as readable text
+    const tempC = (20 + (Math.random() * 15) - 5).toFixed(1); // -5 to 35degC
+    return new TextEncoder().encode(`${tempC}degC`);
+  },
+  '2a6f': () => {
+    // Humidity percentage as readable text
+    const humidity = Math.floor(Math.random() * 60) + 20; // 20-80%
+    return new TextEncoder().encode(`${humidity}%`);
+  },
+  '2a6d': () => {
+    // Pressure in hPa as readable text
+    const pressureHPa = Math.round((101325 + (Math.random() * 5000) - 2500) / 100); // Convert Pa to hPa
+    return new TextEncoder().encode(`${pressureHPa}hPa`);
+  },
+
+  // UART Service
+  'uart-rx': () => {
+    // Echo back with "Echo" prefix
+    return new TextEncoder().encode('Echo: Ready for data');
+  },
+
+  // Custom Service
+  'custom-char-1': () => {
+    const timestamp = new Date().toISOString();
+    return new TextEncoder().encode(`Custom data: ${timestamp}`);
+  },
+  'status': () => {
+    const statuses = ['OK', 'WARNING', 'ERROR', 'BUSY'];
+    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    return new TextEncoder().encode(status);
+  }
+};
+
+// Generate realistic notification data
+const generateNotificationData = (characteristicId: string): Uint8Array => {
+  switch (characteristicId) {
+    case '2a19': // Battery level
+      const batteryLevel = Math.floor(Math.random() * 100) + 1;
+      return new TextEncoder().encode(`${batteryLevel}%`);
+    
+    case '2a37': // Heart rate
+      const heartRate = Math.floor(Math.random() * 40) + 60;
+      return new TextEncoder().encode(`${heartRate}bpm`);
+    
+    case '2a6e': // Temperature
+      const tempC = (20 + (Math.random() * 15) - 5).toFixed(1);
+      return new TextEncoder().encode(`${tempC}degC`);
+    
+    case '2a6f': // Humidity
+      const humidity = Math.floor(Math.random() * 60) + 20;
+      return new TextEncoder().encode(`${humidity}%`);
+    
+    case '2a6d': // Pressure
+      const pressureHPa = Math.round((101325 + (Math.random() * 5000) - 2500) / 100);
+      return new TextEncoder().encode(`${pressureHPa}hPa`);
+    
+    case 'uart-rx':
+      const timestamp = new Date().toLocaleTimeString();
+      return new TextEncoder().encode(`Echo: [${timestamp}] Data received`);
+    
+    case 'status':
+      const statuses = ['OK', 'WARNING', 'ERROR', 'BUSY'];
+      const status = statuses[Math.floor(Math.random() * statuses.length)];
+      return new TextEncoder().encode(status);
+    
+    case 'custom-char-1':
+      const customData = `Notification: ${Date.now()}`;
+      return new TextEncoder().encode(customData);
+    
+    default:
+      return new TextEncoder().encode(`Notification-${characteristicId}-${Date.now()}`);
+  }
+};
+
 export const mockBLEClient: BLEClient = {
   on: (e, h) => emitter.on(e, h as any),
   off: (e, h) => emitter.off(e, h as any),
@@ -99,9 +203,9 @@ export const mockBLEClient: BLEClient = {
   },
   async read(deviceId, serviceId, characteristicId) {
     setTimeout(() => {
-      // Emit bytes; UI will render as HEX/ASCII
-      const sampleText = `Mock-${characteristicId}`;
-      const value = new TextEncoder().encode(sampleText);
+      // Use realistic data generators for known characteristics
+      const generator = mockDataGenerators[characteristicId as keyof typeof mockDataGenerators];
+      const value = generator ? generator() : new TextEncoder().encode(`Mock-${characteristicId}`);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'read' });
     }, 200);
   },
@@ -112,8 +216,16 @@ export const mockBLEClient: BLEClient = {
     const isSubscribed = !!ch?.subscribed;
     if (isSubscribed) {
       setTimeout(() => {
-        // Pass through exactly what was written
-        emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'notification' });
+        // For UART RX, echo back with "Echo" prefix
+        if (characteristicId === 'uart-rx') {
+          const inputText = new TextDecoder().decode(data);
+          const echoResponse = `Echo: ${inputText}`;
+          const value = new TextEncoder().encode(echoResponse);
+          emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'notification' });
+        } else {
+          // Pass through exactly what was written for other characteristics
+          emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value: data, direction: 'notification' });
+        }
       }, 200);
     }
   },
@@ -122,11 +234,9 @@ export const mockBLEClient: BLEClient = {
     const ch = svc?.characteristics?.[characteristicId];
     if (ch) ch.subscribed = true;
     emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'started' });
-    // periodic notifications
+    // periodic notifications with realistic data
     const intervalId = setInterval(() => {
-      // Emit bytes; UI will render
-      const payload = `N-${characteristicId}-${Date.now()}`;
-      const value = new TextEncoder().encode(payload);
+      const value = generateNotificationData(characteristicId);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'notification' });
     }, 5000);
     (window as any).__mockIntervals = (window as any).__mockIntervals || {};
