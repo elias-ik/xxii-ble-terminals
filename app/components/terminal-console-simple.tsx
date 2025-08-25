@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,13 +10,9 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
-  Send, 
   MessageSquare, 
   BookOpen,
-  AlertTriangle,
-  CheckCircle,
   Pencil,
   Trash2,
   Settings,
@@ -32,20 +27,18 @@ import { generateAccessibleLabel, useScreenReader } from '@/hooks/use-keyboard-s
 import { ConsoleHeader } from './console/ConsoleHeader';
 import { ConsoleMessageRow } from './console/ConsoleMessageRow';
 import { WrappedText } from './console/WrappedText';
+import { TerminalSendInput } from './terminal-send-input';
 
 interface TerminalConsoleProps {
   deviceId: string;
 }
 
 export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
-  const [inputValue, setInputValue] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [inputValidation, setInputValidation] = useState<{ isValid: boolean; formatted?: string; error?: string } | null>(null);
   
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLElement | null>(null);
   const [shouldStickToBottom, setShouldStickToBottom] = useState<boolean>(true);
-  const inputRef = useRef<HTMLInputElement>(null);
   const { announce } = useScreenReader();
 
   const {
@@ -127,45 +120,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
     }
   }, [consoleMessages, shouldStickToBottom]);
 
-  // Focus input when characteristic is selected
-  useEffect(() => {
-    if (selectedCharacteristicId && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [selectedCharacteristicId]);
-
-  // Real-time input validation
-  useEffect(() => {
-    if (inputValue && deviceSettings.sendFormat === 'HEX') {
-      const validation = validateHexInput(inputValue, deviceSettings.hexFillerPosition);
-      setInputValidation(validation);
-    } else {
-      setInputValidation(null);
-    }
-  }, [inputValue, deviceSettings.sendFormat, deviceSettings.hexFillerPosition, validateHexInput]);
-
-  const handleSend = () => {
-    if (!selectedCharacteristicId || !selectedServiceId || !canWrite) return;
-    
-    if (inputValidation && !inputValidation.isValid) {
-      announce('Invalid input format', 'assertive');
-      return;
-    }
-
-    const message = inputValidation?.formatted || inputValue;
-    if (!message.trim()) return;
-
-    write(deviceId, selectedServiceId, selectedCharacteristicId, message);
-    setInputValue('');
-    announce('Message sent', 'polite');
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -597,55 +552,18 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
         </div>
 
         {/* Input Area */}
-        <div className="space-y-2 mt-auto">
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={`Type message (${deviceSettings.sendFormat})...`}
-              disabled={!canWrite}
-              className={`flex-1 ${deviceSettings.sendFormat === 'HEX' && inputValidation && !inputValidation.isValid ? 'border-red-500' : ''}`}
-              aria-label={`Message input (${deviceSettings.sendFormat} format)`}
-              aria-describedby={inputValidation ? 'input-validation' : undefined}
-            />
-            
-            <Button
-              onClick={handleSend}
-              disabled={!canWrite || (inputValidation ? !inputValidation.isValid : false)}
-              aria-label="Send message"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Input Validation */}
-          {inputValidation && deviceSettings.sendFormat !== 'HEX' && (
-            <div id="input-validation">
-              <Alert variant={inputValidation.isValid ? 'default' : 'destructive'}>
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  {inputValidation.isValid ? (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                      <span>Valid HEX: {inputValidation.formatted}</span>
-                    </div>
-                  ) : (
-                    <span>{inputValidation.error}</span>
-                  )}
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* Format Help */}
-          {deviceSettings.sendFormat === 'HEX' && (
-            <p className="text-xs text-muted-foreground">
-              Enter HEX values (e.g., 48 65 6C 6C 6F for "Hello"). Invalid characters will be highlighted.
-            </p>
-          )}
-        </div>
+        <TerminalSendInput
+          canWrite={canWrite}
+          sendFormat={deviceSettings.sendFormat}
+          hexFillerPosition={deviceSettings.hexFillerPosition}
+          validateHexInput={validateHexInput}
+          onSend={(message: string) => {
+            if (!selectedCharacteristicId || !selectedServiceId || !canWrite) return;
+            write(deviceId, selectedServiceId, selectedCharacteristicId, message);
+            announce('Message sent', 'polite');
+          }}
+          focusWhenKey={selectedCharacteristicId || null}
+        />
       </CardContent>
 
       {/* Settings Overlay */}
