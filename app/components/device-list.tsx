@@ -1,8 +1,9 @@
-import React, { memo, useRef, useMemo } from 'react';
+import React, { memo, useRef, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, RefreshCw, WifiOff } from 'lucide-react';
 import { useBLEStore } from '@/lib/ble-store';
 import { generateAccessibleLabel, statusColors, getContrastColor } from '@/hooks/use-keyboard-shortcuts';
@@ -18,11 +19,16 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   const searchQuery = useBLEStore((s) => s.searchQuery);
   const setSearchQuery = useBLEStore((s) => s.setSearchQuery);
   const scan = useBLEStore((s) => s.scan);
+  const disconnect = useBLEStore((s) => s.disconnect);
+  const getActiveConnections = useBLEStore((s) => s.getActiveConnections);
   const isScanning = useBLEStore((s) => s.scanStatus.status === 'scanning');
   
   // Use stable selectors to prevent infinite loops
   const devices = useBLEStore((s) => s.devices);
   const hasScanned = useBLEStore((s) => Object.keys(s.devices).length > 0);
+  
+  // State for confirmation dialog
+  const [showRescanConfirm, setShowRescanConfirm] = useState(false);
   
   // Memoize the sorted devices to prevent infinite re-renders
   const sortedDevices = useMemo(() => {
@@ -134,6 +140,38 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     onDeviceSelect(deviceId);
   };
 
+  const handleRescanClick = () => {
+    const activeConnections = getActiveConnections();
+    if (activeConnections.length > 0) {
+      setShowRescanConfirm(true);
+    } else {
+      handleRescan();
+    }
+  };
+
+  const handleRescanConfirm = async () => {
+    setShowRescanConfirm(false);
+    
+    // Disconnect all active connections
+    const activeConnections = getActiveConnections();
+    for (const connection of activeConnections) {
+      try {
+        await disconnect(connection.deviceId);
+      } catch (error) {
+        console.error(`Failed to disconnect from ${connection.deviceId}:`, error);
+      }
+    }
+    
+    // Wait a moment for disconnections to complete, then scan
+    setTimeout(() => {
+      handleRescan();
+    }, 500);
+  };
+
+  const handleRescanCancel = () => {
+    setShowRescanConfirm(false);
+  };
+
   const handleRescan = async () => {
     try {
       const ble = (window as any)?.bleAPI;
@@ -180,7 +218,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
             />
           </div>
           <Button
-            onClick={handleRescan}
+            onClick={handleRescanClick}
             disabled={isScanning}
             variant="outline"
             size="sm"
@@ -204,7 +242,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                   <p className="text-sm">No devices scanned yet</p>
                   <p className="text-xs mb-4">Click Rescan to search for devices</p>
                   <Button
-                    onClick={handleRescan}
+                    onClick={handleRescanClick}
                     disabled={isScanning}
                     className="w-full"
                     aria-label="Scan for devices"
@@ -254,6 +292,26 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
           <div className="h-2" />
         </div>
       </ScrollArea>
+
+      {/* Rescan Confirmation Dialog */}
+      <Dialog open={showRescanConfirm} onOpenChange={setShowRescanConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Rescan</DialogTitle>
+            <DialogDescription>
+              You will be disconnected from all BLE devices. Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleRescanCancel}>
+              No
+            </Button>
+            <Button onClick={handleRescanConfirm}>
+              Yes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
