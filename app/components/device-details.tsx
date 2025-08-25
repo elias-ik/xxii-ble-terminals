@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Signal, Wifi, WifiOff, Clock, AlertCircle, CheckCircle, XCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { useBLEStore, type Device } from "@/lib/ble-store";
 import { TerminalConsole } from "./terminal-console-simple";
+import { categorizeRssi } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
 interface DeviceDetailsProps {
@@ -28,15 +29,25 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
   const connectedDevices = Object.values(devices).filter(d => d.connected);
 
   const getRssiColor = (rssi: number) => {
-    if (rssi >= -50) return "text-green-500";
-    if (rssi >= -70) return "text-yellow-500";
-    return "text-red-500";
+    switch (categorizeRssi(rssi)) {
+      case 'excellent': return 'text-green-600';
+      case 'good': return 'text-green-500';
+      case 'fair': return 'text-yellow-500';
+      case 'poor': return 'text-orange-500';
+      case 'very-poor': return 'text-red-500';
+      default: return 'text-muted-foreground';
+    }
   };
 
   const getRssiStrength = (rssi: number) => {
-    if (rssi >= -50) return "Strong";
-    if (rssi >= -70) return "Good";
-    return "Weak";
+    switch (categorizeRssi(rssi)) {
+      case 'excellent': return 'Strong';
+      case 'good': return 'Good';
+      case 'fair': return 'Fair';
+      case 'poor': return 'Poor';
+      case 'very-poor': return 'Very Poor';
+      default: return 'Unknown';
+    }
   };
 
   const getConnectionStatusIcon = () => {

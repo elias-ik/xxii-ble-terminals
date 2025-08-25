@@ -1,5 +1,6 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, type RefObject } from 'react';
 import { useBLEStore } from '@/lib/ble-store';
+import { categorizeRssi } from '@/lib/utils';
 
 export interface KeyboardShortcuts {
   // Focus management
@@ -18,6 +19,11 @@ export interface KeyboardShortcuts {
   rescan: () => void;
   connectSelected: () => void;
   disconnectSelected: () => void;
+
+  // Refs for components to use
+  inputRef: RefObject<HTMLInputElement | null>;
+  searchRef: RefObject<HTMLInputElement | null>;
+  overlayRef: RefObject<HTMLDivElement | null>;
 }
 
 export function useKeyboardShortcuts(): KeyboardShortcuts {
@@ -259,12 +265,15 @@ export function generateAccessibleLabel(type: string, data: any): string {
       }
     
     case 'rssi-strength':
-      const rssi = data.rssi;
-      if (rssi >= -50) return 'Excellent signal strength';
-      if (rssi >= -60) return 'Good signal strength';
-      if (rssi >= -70) return 'Fair signal strength';
-      if (rssi >= -80) return 'Poor signal strength';
-      return 'Very poor signal strength';
+      const rssi = data.rssi as number | undefined | null;
+      switch (categorizeRssi(rssi)) {
+        case 'excellent': return 'Excellent signal strength';
+        case 'good': return 'Good signal strength';
+        case 'fair': return 'Fair signal strength';
+        case 'poor': return 'Poor signal strength';
+        case 'very-poor': return 'Very poor signal strength';
+        default: return 'Unknown signal strength';
+      }
     
     case 'device-row':
       const device = data;

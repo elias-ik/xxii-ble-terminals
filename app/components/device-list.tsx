@@ -6,6 +6,7 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/h
 import { Search, RefreshCw, WifiOff } from 'lucide-react';
 import { useBLEStore } from '@/lib/ble-store';
 import { generateAccessibleLabel, statusColors, getContrastColor } from '@/hooks/use-keyboard-shortcuts';
+import { categorizeRssi } from '@/lib/utils';
 
 interface DeviceListProps {
   onDeviceSelect: (deviceId: string) => void;
@@ -92,19 +93,25 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   };
 
   const getRssiColor = (rssi: number) => {
-    if (rssi >= -50) return 'text-green-600';
-    if (rssi >= -60) return 'text-green-500';
-    if (rssi >= -70) return 'text-yellow-500';
-    if (rssi >= -80) return 'text-orange-500';
-    return 'text-red-500';
+    switch (categorizeRssi(rssi)) {
+      case 'excellent': return 'text-green-600';
+      case 'good': return 'text-green-500';
+      case 'fair': return 'text-yellow-500';
+      case 'poor': return 'text-orange-500';
+      case 'very-poor': return 'text-red-500';
+      default: return 'text-muted-foreground';
+    }
   };
 
   const getRssiStrength = (rssi: number) => {
-    if (rssi >= -50) return 'Excellent';
-    if (rssi >= -60) return 'Good';
-    if (rssi >= -70) return 'Fair';
-    if (rssi >= -80) return 'Poor';
-    return 'Very Poor';
+    switch (categorizeRssi(rssi)) {
+      case 'excellent': return 'Excellent';
+      case 'good': return 'Good';
+      case 'fair': return 'Fair';
+      case 'poor': return 'Poor';
+      case 'very-poor': return 'Very Poor';
+      default: return 'Unknown';
+    }
   };
 
   const formatAddress = (address: string) => {
