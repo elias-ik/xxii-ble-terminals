@@ -1,5 +1,4 @@
-import React, { memo, useEffect, useRef } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import React, { memo, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -159,28 +158,8 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     }
   };
 
-  // Virtualization setup
+  // Simple scroll area ref for now
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    const root = scrollAreaRef.current;
-    if (!root) return;
-    const vp = root.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
-    viewportRef.current = vp;
-  }, []);
-
-  const rowVirtualizer = useVirtualizer({
-    count: sortedDevices.length,
-    getScrollElement: () => viewportRef.current as HTMLElement | null,
-    estimateSize: () => 56,
-    overscan: 20,
-    getItemKey: (index) => {
-      const device = sortedDevices[index];
-      return device?.id || `index-${index}`;
-    },
-  });
-  const virtualItems = rowVirtualizer.getVirtualItems();
-  const totalSize = rowVirtualizer.getTotalSize();
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -240,9 +219,8 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
               )}
             </div>
           ) : (
-            <div className="relative w-full" style={{ height: totalSize }}>
-              {virtualItems.map((vItem) => {
-                const device = sortedDevices[vItem.index];
+            <div className="space-y-0">
+              {sortedDevices.map((device) => {
                 const isSelected = selectedDevice?.id === device.id;
                 const accessibleLabel = generateAccessibleLabel('device-row', device);
                 const fullName = getDeviceDisplayName(device);
@@ -250,37 +228,23 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                 const isTruncated = fullName.length > maxChars;
                 const shown = truncateWithDots(fullName, maxChars);
                 return (
-                  <div
+                  <DeviceRow
                     key={device.id}
-                    ref={rowVirtualizer.measureElement}
-                    data-index={vItem.index}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      transform: `translateY(${vItem.start}px)`,
-                      willChange: 'transform',
-                      contain: 'layout paint',
-                    }}
-                  >
-                    <DeviceRow
-                      id={device.id}
-                      isSelected={isSelected}
-                      statusColor={getStatusDotColor(device)}
-                      statusTitle={getStatusDotTitle(device)}
-                      shownName={shown}
-                      fullName={fullName}
-                      isTruncated={isTruncated}
-                      addressShown={truncateMiddle(device.address || '')}
-                      rssi={device.rssi}
-                      rssiColor={getRssiColor(device.rssi)}
-                      rssiStrength={getRssiStrength(device.rssi)}
-                      connectionBadge={getConnectionBadge(device)}
-                      accessibleLabel={accessibleLabel}
-                      onSelect={handleDeviceClick}
-                    />
-                  </div>
+                    id={device.id}
+                    isSelected={isSelected}
+                    statusColor={getStatusDotColor(device)}
+                    statusTitle={getStatusDotTitle(device)}
+                    shownName={shown}
+                    fullName={fullName}
+                    isTruncated={isTruncated}
+                    addressShown={truncateMiddle(device.address || '')}
+                    rssi={device.rssi}
+                    rssiColor={getRssiColor(device.rssi)}
+                    rssiStrength={getRssiStrength(device.rssi)}
+                    connectionBadge={getConnectionBadge(device)}
+                    accessibleLabel={accessibleLabel}
+                    onSelect={handleDeviceClick}
+                  />
                 );
               })}
             </div>
