@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,7 +44,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     return name === 'Unsupported' || /^Unknown or Unsupported Device \(.*\)$/.test(name);
   };
   // UI-side sorting: connected first, then unsupported to bottom, then by strongest RSSI
-  const sortedDevices = [...filteredDevices].sort((a: any, b: any) => {
+  const sortedDevices = useMemo(() => [...filteredDevices].sort((a: any, b: any) => {
     // 1) Connection status
     if (a.connected && !b.connected) return -1;
     if (!a.connected && b.connected) return 1;
@@ -57,7 +57,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     const rssiA = typeof a.rssi === 'number' ? a.rssi : -999;
     const rssiB = typeof b.rssi === 'number' ? b.rssi : -999;
     return rssiB - rssiA;
-  });
+  }), [filteredDevices]);
   const isScanning = getIsScanning();
   const hasScanned = devices && Object.keys(devices).length > 0;
   

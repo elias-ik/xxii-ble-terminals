@@ -92,6 +92,7 @@ export interface ScanStatus {
 export type BLEAction = 
   // Device Management
   | { type: 'DEVICE_DISCOVERED'; payload: Device }
+  | { type: 'DEVICES_DISCOVERED'; payload: Device[] }
   | { type: 'DEVICE_UPDATED'; payload: Device }
   | { type: 'DEVICE_REMOVED'; payload: { deviceId: string } }
   
@@ -252,11 +253,13 @@ export interface BLEState {
 function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | 'cleanupEventListeners'>, action: BLEAction): Omit<BLEState, 'dispatch' | 'setupEventListeners' | 'cleanupEventListeners'> {
   const newState = { ...state };
   
-  // Add action to history for debugging
-  newState.actionHistory = [
-    ...newState.actionHistory.slice(-99), // Keep last 100 actions
-    { action, timestamp: new Date() }
-  ];
+  // Add action to history for debugging (development only)
+  if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
+    newState.actionHistory = [
+      ...newState.actionHistory.slice(-99), // Keep last 100 actions
+      { action, timestamp: new Date() }
+    ];
+  }
   
   switch (action.type) {
     // Device Management
@@ -265,6 +268,15 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
         ...newState.devices,
         [action.payload.id]: action.payload
       };
+      break;
+    case 'DEVICES_DISCOVERED':
+      {
+        const merged = { ...newState.devices };
+        for (const d of action.payload) {
+          merged[d.id] = d;
+        }
+        newState.devices = merged;
+      }
       break;
       
     case 'DEVICE_UPDATED':
@@ -477,6 +489,13 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
 // ============================================================================
 
 export const selectors = {
+  // Simple memoization caches keyed by devices object identity and query string
+  _cache: {
+    devicesRef: null as any,
+    query: '' as string,
+    filtered: [] as Device[],
+    sorted: [] as Device[]
+  },
   // Device Selectors
   getConnectedDevices: (state: BLEState) => 
     Object.values(state.devices).filter(device => device.connected),
@@ -493,45 +512,42 @@ export const selectors = {
       }),
       
   getFilteredDevices: (state: BLEState) => {
-    // Safety check for when state is not yet initialized
-    if (!state || !state.devices) {
-      return [];
-    }
-    
+    if (!state || !state.devices) return [];
     const allDevices = Object.values(state.devices);
-    
-    if (!state.searchQuery.trim()) {
-      return allDevices;
+    const query = state.searchQuery.trim().toLowerCase();
+    const cache = selectors._cache;
+    if (cache.devicesRef === state.devices && cache.query === query) {
+      return cache.filtered;
     }
-    
-    const query = state.searchQuery.toLowerCase();
-    return allDevices.filter(device => 
-      device.name.toLowerCase().includes(query) ||
-      device.address.toLowerCase().includes(query)
-    );
+    const filtered = query
+      ? allDevices.filter((device) =>
+          device.name.toLowerCase().includes(query) ||
+          device.address.toLowerCase().includes(query)
+        )
+      : allDevices;
+    cache.devicesRef = state.devices as any;
+    cache.query = query;
+    cache.filtered = filtered;
+    // Invalidate sorted cache; recomputed on demand
+    cache.sorted = [];
+    return filtered;
   },
 
   // Connected devices first, then by strongest RSSI; respects current search query
   getSortedFilteredDevices: (state: BLEState) => {
-    if (!state || !state.devices) {
-      return [];
+    if (!state || !state.devices) return [];
+    const cache = selectors._cache;
+    const filtered = selectors.getFilteredDevices(state);
+    if (cache.sorted.length && cache.filtered === filtered) {
+      return cache.sorted;
     }
-
-    const query = state.searchQuery.trim().toLowerCase();
-    let list = Object.values(state.devices);
-    if (query) {
-      list = list.filter((device) =>
-        device.name.toLowerCase().includes(query) ||
-        device.address.toLowerCase().includes(query)
-      );
-    }
-
-    // Sort: connected first, then by RSSI (higher/less negative first)
-    return list.sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
       if (a.connected && !b.connected) return -1;
       if (!a.connected && b.connected) return 1;
       return (b.rssi ?? -999) - (a.rssi ?? -999);
     });
+    cache.sorted = sorted;
+    return sorted;
   },
   
   getSelectedDevice: (state: BLEState) => 
@@ -759,20 +775,42 @@ export const useBLEStore = create<BLEState>()(
         }
 
         // Handlers
+        const pendingDiscoveries: Record<string, Device> = {};
+        let flushTimer: number | null = null;
+        const flushNow = () => {
+          if (flushTimer != null) {
+            window.clearTimeout(flushTimer);
+            flushTimer = null;
+          }
+          const arr = Object.values(pendingDiscoveries);
+          if (arr.length > 0) {
+            dispatch({ type: 'DEVICES_DISCOVERED', payload: arr });
+            arr.forEach((d) => get().hydrateDeviceSettings(d.id).catch(() => {}));
+            for (const k of Object.keys(pendingDiscoveries)) delete pendingDiscoveries[k];
+          }
+        };
+        const scheduleFlush = () => {
+          if (flushTimer != null) return;
+          flushTimer = window.setTimeout(() => {
+            flushNow();
+          }, 1000);
+        };
+
         const onScanStatus = (evt: { status: 'idle' | 'scanning' | 'completed' | 'failed' | 'started'; deviceCount?: number; error?: string }) => {
           if (evt.status === 'scanning' || evt.status === 'started') {
             dispatch({ type: 'SCAN_STARTED', payload: { startedAt: new Date() } });
           } else if (evt.status === 'completed') {
+            flushNow();
             dispatch({ type: 'SCAN_COMPLETED', payload: { deviceCount: evt.deviceCount ?? 0, completedAt: new Date() } });
           } else if (evt.status === 'failed') {
+            flushNow();
             dispatch({ type: 'SCAN_FAILED', payload: { error: evt.error || 'Unknown error', completedAt: new Date() } });
           }
         };
 
         const onDeviceDiscovered = (device: Device) => {
-          dispatch({ type: 'DEVICE_DISCOVERED', payload: device });
-          // Hydrate settings for this device from storage so UI reflects persisted prefs even before connect
-          get().hydrateDeviceSettings(device.id).catch(() => {});
+          pendingDiscoveries[device.id] = device;
+          scheduleFlush();
         };
 
         const onDeviceUpdated = (device: Device) => {
