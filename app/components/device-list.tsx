@@ -146,6 +146,8 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     if (activeConnections.length > 0) {
       setShowRescanConfirm(true);
     } else {
+      // No active connections: clear list then rescan
+      clearDevices();
       handleRescan();
     }
   };
