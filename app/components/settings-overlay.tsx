@@ -203,7 +203,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label className="text-sm">Message Start</Label>
+                  <Label className="text-sm">TX Start</Label>
                   {(() => {
                     const startKnown = ['\x02'];
                     const startSelectValue = (!settings.messageStart || settings.messageStart === '')
@@ -254,7 +254,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Message Delimiter</Label>
+                  <Label className="text-sm">TX End</Label>
                   {(() => {
                     const delimKnown = ['\x03', '\n', '\r\n', ','];
                     const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
@@ -359,7 +359,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                       })()}
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-sm">RX Delimiter</Label>
+                      <Label className="text-sm">RX End</Label>
                       {(() => {
                         const delimKnown = ['\x03', '\n', '\r\n', ','];
                         const delimSelectValue = (!settings.rxDelimiter || settings.rxDelimiter === '') ? 'none' : (
