@@ -1,4 +1,4 @@
-import React, { memo, useRef } from 'react';
+import React, { memo, useRef, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,10 +20,26 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   const scan = useBLEStore((s) => s.scan);
   const isScanning = useBLEStore((s) => s.scanStatus.status === 'scanning');
   
-  // Use the store's built-in optimized selectors
-  const sortedDevices = useBLEStore((s) => s.getSortedFilteredDevices());
-  
+  // Use stable selectors to prevent infinite loops
+  const devices = useBLEStore((s) => s.devices);
   const hasScanned = useBLEStore((s) => Object.keys(s.devices).length > 0);
+  
+  // Memoize the sorted devices to prevent infinite re-renders
+  const sortedDevices = useMemo(() => {
+    const all = Object.values(devices);
+    const q = (searchQuery || '').trim().toLowerCase();
+    const filtered = q
+      ? all.filter((d: any) =>
+          (d.name || '').toLowerCase().includes(q) || (d.address || '').toLowerCase().includes(q)
+        )
+      : all;
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      if (a.connected && !b.connected) return -1;
+      if (!a.connected && b.connected) return 1;
+      return (b.rssi ?? -999) - (a.rssi ?? -999);
+    });
+    return sorted as any[];
+  }, [devices, searchQuery]);
 
   const getStatusDotColor = (device: any) => {
     switch (device.connectionStatus) {
