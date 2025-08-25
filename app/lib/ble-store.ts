@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { devtools } from 'zustand/middleware';
+import { storage } from '@/lib/storage';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -178,6 +179,10 @@ export interface BLEState {
   // Event Bus Integration
   setupEventListeners: () => void;
   cleanupEventListeners: () => void;
+  // Persistence helpers
+  persistDeviceSubscriptions: (deviceId: string) => Promise<void>;
+  persistDeviceWriteSelection: (deviceId: string) => Promise<void>;
+  restoreDeviceStateOnConnect: (deviceId: string) => Promise<void>;
   
   // UI per Device actions
   setDeviceUI: (deviceId: string, update: Partial<BLEState['deviceUI'][string]>) => void;
@@ -793,6 +798,10 @@ export const useBLEStore = create<BLEState>()(
                     }
                   }
                 }));
+                // Restore persisted settings and subscriptions
+                get().restoreDeviceStateOnConnect(evt.deviceId).catch((e) => {
+                  console.warn('Failed to restore device state on connect', e);
+                });
               }
               break;
             case 'disconnecting':
@@ -1058,8 +1067,15 @@ export const useBLEStore = create<BLEState>()(
 
       // Unsubscribe from all active characteristics for a device
       unsubscribeAll: async (deviceId: string) => {
+        // Persist current active subscriptions before removing them
+        try {
+          await get().persistDeviceSubscriptions(deviceId);
+          await get().persistDeviceWriteSelection(deviceId);
+        } catch (e) {
+          console.warn('Failed to persist subscriptions before unsubscribeAll', e);
+        }
         const subscriptions = get().getActiveSubscriptions(deviceId);
-        const promises = subscriptions.map(({ serviceId, characteristicId }) => 
+        const promises = subscriptions.map(({ serviceId, characteristicId }) =>
           get().unsubscribe(deviceId, serviceId, characteristicId)
         );
         await Promise.all(promises);
@@ -1081,6 +1097,13 @@ export const useBLEStore = create<BLEState>()(
         const currentSettings = selectors.getDeviceSettings(state, deviceId);
         const newSettings = { ...currentSettings, ...settings };
         dispatch({ type: 'DEVICE_SETTINGS_UPDATED', payload: { deviceId, settings: newSettings } });
+        // Persist per-device settings
+        try {
+          const key = `device:${deviceId}:settings`;
+          storage.set(key, newSettings);
+        } catch (e) {
+          console.warn('Failed to persist device settings', e);
+        }
       },
       
       selectDevice: (deviceId: string | null) => {
@@ -1206,6 +1229,93 @@ export const useBLEStore = create<BLEState>()(
       simulateReconnection: (deviceId: string) => {
         const { dispatch } = get();
         dispatch({ type: 'CONNECTION_SUCCEEDED', payload: { deviceId, connection: { deviceId, connected: true, services: {} } } });
+      },
+
+      // Persistence helpers
+      persistDeviceSubscriptions: async (deviceId: string) => {
+        const subs = get().getActiveSubscriptions(deviceId);
+        const key = `device:${deviceId}:subscriptions`;
+        await storage.set(key, subs);
+      },
+      persistDeviceWriteSelection: async (deviceId: string) => {
+        const ui = selectors.getDeviceUI(get(), deviceId);
+        const key = `device:${deviceId}:writeSelection`;
+        await storage.set(key, {
+          selectedServiceId: ui.selectedServiceId,
+          selectedCharacteristicId: ui.selectedCharacteristicId,
+          writeMode: ui.writeMode
+        });
+      },
+      restoreDeviceStateOnConnect: async (deviceId: string) => {
+        // Restore settings
+        try {
+          const settingsKey = `device:${deviceId}:settings`;
+          const savedSettings = await storage.get<DeviceSettings>(settingsKey);
+          if (savedSettings) {
+            // Merge into store
+            get().setDeviceSettings(deviceId, savedSettings);
+          }
+        } catch (e) {
+          console.warn('Failed to restore device settings', e);
+        }
+
+        // Restore subscriptions
+        try {
+          const subsKey = `device:${deviceId}:subscriptions`;
+          const savedSubs = await storage.get<Array<{ serviceId: string; characteristicId: string }>>(subsKey, []);
+          const state = get();
+          const connection = state.connections[deviceId];
+          if (!connection || !connection.services) return;
+          const toNotify: string[] = [];
+          const toIndicate: string[] = [];
+          for (const sub of savedSubs || []) {
+            const svc = connection.services[sub.serviceId];
+            const ch = svc?.characteristics[sub.characteristicId];
+            if (!svc || !ch) continue;
+            try {
+              await state.subscribe(deviceId, sub.serviceId, sub.characteristicId);
+              const key = `${sub.serviceId}:${sub.characteristicId}`;
+              if (ch.capabilities.notify) toNotify.push(key);
+              else if (ch.capabilities.indicate) toIndicate.push(key);
+            } catch (e) {
+              console.warn('Failed to restore subscription', sub, e);
+            }
+          }
+          if (toNotify.length || toIndicate.length) {
+            const currentUI = selectors.getDeviceUI(get(), deviceId);
+            get().setDeviceUI(deviceId, {
+              selectedNotifyKeys: Array.from(new Set([...(currentUI.selectedNotifyKeys || []), ...toNotify])),
+              selectedIndicateKeys: Array.from(new Set([...(currentUI.selectedIndicateKeys || []), ...toIndicate]))
+            });
+          }
+        } catch (e) {
+          console.warn('Failed to restore subscriptions', e);
+        }
+
+        // Restore write mode selection
+        try {
+          const writeKey = `device:${deviceId}:writeSelection`;
+          const saved = await storage.get<{ selectedServiceId: string | null; selectedCharacteristicId: string | null; writeMode: 'write' | 'writeNoResp' | null }>(writeKey);
+          if (saved && saved.selectedServiceId && saved.selectedCharacteristicId && saved.writeMode) {
+            const state = get();
+            const connection = state.connections[deviceId];
+            const service = connection?.services[saved.selectedServiceId];
+            const ch = service?.characteristics[saved.selectedCharacteristicId];
+            if (ch) {
+              const canWrite = saved.writeMode === 'write' && ch.capabilities.write;
+              const canWriteNoResp = saved.writeMode === 'writeNoResp' && ch.capabilities.writeNoResp;
+              if (canWrite || canWriteNoResp) {
+                get().setDeviceUI(deviceId, {
+                  selectedServiceId: saved.selectedServiceId,
+                  selectedCharacteristicId: saved.selectedCharacteristicId,
+                  writeMode: saved.writeMode
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to restore write selection', e);
+        }
       }
     })),
     {

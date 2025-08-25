@@ -40,3 +40,13 @@ npm run electron:build
 This will create distributable packages in the `release` directory for your platform (macOS, Windows, Linux).
 
 
+## Storage
+
+Use the storage abstraction so the correct backend is selected automatically (Electron vs in-memory):
+
+```ts
+import { storage } from '@/lib/storage';
+```
+
+Do not import `electron-storage` or `memory-storage` directly.
+

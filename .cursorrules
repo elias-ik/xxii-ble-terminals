@@ -104,3 +104,14 @@ you dont need to run `npm run electron:dev:simple` or whatever i have the projec
 this app uses a node implementation of SimpleBle called webbluetooth
 https://github.com/thegecko/webbluetooth
 
+
+## Storage
+
+Use the storage abstraction so the correct backend is selected automatically (Electron vs in-memory):
+
+```ts
+import { storage } from '@/lib/storage';
+```
+
+Do not import `electron-storage` or `memory-storage` directly.
+

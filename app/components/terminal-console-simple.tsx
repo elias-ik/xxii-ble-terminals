@@ -352,6 +352,11 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                   const showIndicate = selectedIndicateSet.has(key);
                   const showWrite = writeKey === key && writeMode === 'write';
                   const showWriteNoResp = writeKey === key && writeMode === 'writeNoResp';
+                  // Persist write selection whenever visible badges correspond to current selection
+                  if (writeKey === key && (showWrite || showWriteNoResp)) {
+                    // best-effort fire and forget
+                    (useBLEStore.getState() as any).persistDeviceWriteSelection(deviceId);
+                  }
                   rows.push(
                     <div key={key} className="flex items-center justify-between text-sm border rounded-md px-2 py-1">
                       <div className="flex items-center gap-2 min-w-0">

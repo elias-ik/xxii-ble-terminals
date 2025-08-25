@@ -21,10 +21,26 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
   const currentSettings = getDeviceSettings(deviceId);
   
   const [settings, setSettings] = useState<DeviceSettings>(currentSettings);
-  const [customStart, setCustomStart] = useState<string>("");
-  const [customDelimiter, setCustomDelimiter] = useState<string>("");
-  const [rxCustomStart, setRxCustomStart] = useState<string>("");
-  const [rxCustomDelimiter, setRxCustomDelimiter] = useState<string>("");
+  const [customStart, setCustomStart] = useState<string>(() => {
+    const startKnown = ['\x02'];
+    const val = currentSettings.messageStart || '';
+    return val && !startKnown.includes(val) ? val : '';
+  });
+  const [customDelimiter, setCustomDelimiter] = useState<string>(() => {
+    const delimKnown = ['\x03', '\n', '\r\n', ','];
+    const val = currentSettings.messageDelimiter || '';
+    return val && !delimKnown.includes(val) ? val : '';
+  });
+  const [rxCustomStart, setRxCustomStart] = useState<string>(() => {
+    const startKnown = ['\x02'];
+    const val = currentSettings.rxStart || '';
+    return val && !startKnown.includes(val) ? val : '';
+  });
+  const [rxCustomDelimiter, setRxCustomDelimiter] = useState<string>(() => {
+    const delimKnown = ['\x03', '\n', '\r\n', ','];
+    const val = currentSettings.rxDelimiter || '';
+    return val && !delimKnown.includes(val) ? val : '';
+  });
 
   const handleSettingChange = (key: keyof DeviceSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
@@ -43,8 +59,27 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
 
   const handleCancel = () => {
     setSettings(currentSettings);
-    setCustomStart("");
-    setCustomDelimiter("");
+    // Re-derive custom fields from current settings
+    setCustomStart(() => {
+      const known = ['\x02'];
+      const val = currentSettings.messageStart || '';
+      return val && !known.includes(val) ? val : '';
+    });
+    setCustomDelimiter(() => {
+      const known = ['\x03', '\n', '\r\n', ','];
+      const val = currentSettings.messageDelimiter || '';
+      return val && !known.includes(val) ? val : '';
+    });
+    setRxCustomStart(() => {
+      const known = ['\x02'];
+      const val = currentSettings.rxStart || '';
+      return val && !known.includes(val) ? val : '';
+    });
+    setRxCustomDelimiter(() => {
+      const known = ['\x03', '\n', '\r\n', ','];
+      const val = currentSettings.rxDelimiter || '';
+      return val && !known.includes(val) ? val : '';
+    });
     onOpenChange(false);
   };
 
