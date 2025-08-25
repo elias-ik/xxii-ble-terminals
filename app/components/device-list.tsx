@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo, useRef } from 'react';
+import React, { memo, useEffect, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,11 +20,11 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   const setSearchQuery = useBLEStore((s) => s.setSearchQuery);
   const scan = useBLEStore((s) => s.scan);
   const isScanning = useBLEStore((s) => s.scanStatus.status === 'scanning');
-  const devices = useBLEStore((s) => s.devices);
-
-  const sortedDevices = useMemo(() => {
-    const all = devices ? Object.values(devices) : [];
-    const q = (searchQuery || '').trim().toLowerCase();
+  
+  // Use the store's optimized selector instead of raw devices object
+  const sortedDevices = useBLEStore((s) => {
+    const all = Object.values(s.devices);
+    const q = (s.searchQuery || '').trim().toLowerCase();
     const filtered = q
       ? all.filter((d: any) =>
           (d.name || '').toLowerCase().includes(q) || (d.address || '').toLowerCase().includes(q)
@@ -36,7 +36,9 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
       return (b.rssi ?? -999) - (a.rssi ?? -999);
     });
     return sorted as any[];
-  }, [devices, searchQuery]);
+  });
+  
+  const devices = useBLEStore((s) => s.devices);
   const hasScanned = devices && Object.keys(devices).length > 0;
 
   const getStatusDotColor = (device: any) => {
@@ -172,7 +174,10 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     getScrollElement: () => viewportRef.current as HTMLElement | null,
     estimateSize: () => 56,
     overscan: 20,
-    getItemKey: (index) => (sortedDevices[index]?.id ?? index),
+    getItemKey: (index) => {
+      const device = sortedDevices[index];
+      return device?.id || `index-${index}`;
+    },
   });
   const virtualItems = rowVirtualizer.getVirtualItems();
   const totalSize = rowVirtualizer.getTotalSize();
