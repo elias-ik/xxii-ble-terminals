@@ -131,6 +131,18 @@ function registerIpcHandlers() {
           broadcast('ble:devicesDiscovered', batch);
         }
       };
+      
+      // Add a debounced flush to reduce update frequency
+      let debouncedFlushTimer = null;
+      const debouncedFlush = () => {
+        if (debouncedFlushTimer) {
+          clearTimeout(debouncedFlushTimer);
+        }
+        debouncedFlushTimer = setTimeout(() => {
+          flush();
+          debouncedFlushTimer = null;
+        }, 100); // 100ms debounce
+      };
 
       const runOnce = async () => {
         const bt = new Bluetooth({
@@ -164,7 +176,7 @@ function registerIpcHandlers() {
         try {
           await bt.requestDevice({ acceptAllDevices: true, optionalServices: [] });
         } catch {}
-        flush();
+        debouncedFlush();
       };
 
       while (keepGoing) {
@@ -174,6 +186,11 @@ function registerIpcHandlers() {
         if (idleMs >= idleLimitMs || totalMs >= maxTotalMs) keepGoing = false;
       }
 
+      // Clear any pending debounced flush and do final flush
+      if (debouncedFlushTimer) {
+        clearTimeout(debouncedFlushTimer);
+        debouncedFlushTimer = null;
+      }
       flush();
       broadcast('ble:scanStatus', { status: 'completed', deviceCount: seen.size });
     } catch (error) {
