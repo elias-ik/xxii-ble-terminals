@@ -8,6 +8,7 @@ import { Search, RefreshCw, WifiOff } from 'lucide-react';
 import { useBLEStore } from '@/lib/ble-store';
 import { generateAccessibleLabel, statusColors, getContrastColor } from '@/hooks/use-keyboard-shortcuts';
 import { categorizeRssi } from '@/lib/utils';
+import { DeviceRow } from './device-row';
 
 interface DeviceListProps {
   onDeviceSelect: (deviceId: string) => void;
@@ -260,8 +261,6 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
               {virtualItems.map((vItem) => {
                 const device = sortedDevices[vItem.index];
                 const isSelected = selectedDevice?.id === device.id;
-                const statusColor = getStatusDotColor(device);
-                const statusTitle = getStatusDotTitle(device);
                 const accessibleLabel = generateAccessibleLabel('device-row', device);
                 const fullName = getDeviceDisplayName(device);
                 const maxChars = 26;
@@ -282,51 +281,22 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                       contain: 'layout paint',
                     }}
                   >
-                    <div
-                      className={`px-2 py-1 border-b cursor-pointer select-none ${
-                        isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
-                      }`}
-                      onClick={() => handleDeviceClick(device.id)}
-                      onKeyDown={(e) => handleDeviceKeyDown(e, device.id)}
-                      tabIndex={0}
-                      role="button"
-                      aria-label={accessibleLabel}
-                      aria-pressed={isSelected}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: statusColor }}
-                            role="img"
-                            aria-label={`Status: ${statusTitle}`}
-                            title={statusTitle}
-                          />
-                          <HoverCard openDelay={150}>
-                            <HoverCardTrigger asChild>
-                              <span className="font-medium text-[13px] cursor-default">
-                                {shown}
-                              </span>
-                            </HoverCardTrigger>
-                            {isTruncated && (
-                              <HoverCardContent side="top" align="start" className="max-w-xs">
-                                <div className="text-sm break-words">{fullName}</div>
-                              </HoverCardContent>
-                            )}
-                          </HoverCard>
-                          <div className="ml-auto flex items-center gap-2">
-                            {getConnectionBadge(device)}
-                          </div>
-                        </div>
-                        <div className="mt-0.5 flex items-center justify-between text-[11px] text-muted-foreground leading-tight">
-                          <span className="font-mono">{truncateMiddle(device.address || '')}</span>
-                          <span className="flex items-center gap-1">
-                            <span className={getRssiColor(device.rssi)}>{device.rssi}dBm</span>
-                            <span>({getRssiStrength(device.rssi)})</span>
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                    <DeviceRow
+                      id={device.id}
+                      isSelected={isSelected}
+                      statusColor={getStatusDotColor(device)}
+                      statusTitle={getStatusDotTitle(device)}
+                      shownName={shown}
+                      fullName={fullName}
+                      isTruncated={isTruncated}
+                      addressShown={truncateMiddle(device.address || '')}
+                      rssi={device.rssi}
+                      rssiColor={getRssiColor(device.rssi)}
+                      rssiStrength={getRssiStrength(device.rssi)}
+                      connectionBadge={getConnectionBadge(device)}
+                      accessibleLabel={accessibleLabel}
+                      onSelect={handleDeviceClick}
+                    />
                   </div>
                 );
               })}
