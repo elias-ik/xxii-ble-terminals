@@ -183,6 +183,7 @@ export interface BLEState {
   persistDeviceSubscriptions: (deviceId: string) => Promise<void>;
   persistDeviceWriteSelection: (deviceId: string) => Promise<void>;
   restoreDeviceStateOnConnect: (deviceId: string) => Promise<void>;
+  hydrateDeviceSettings: (deviceId: string) => Promise<void>;
   
   // UI per Device actions
   setDeviceUI: (deviceId: string, update: Partial<BLEState['deviceUI'][string]>) => void;
@@ -770,6 +771,8 @@ export const useBLEStore = create<BLEState>()(
 
         const onDeviceDiscovered = (device: Device) => {
           dispatch({ type: 'DEVICE_DISCOVERED', payload: device });
+          // Hydrate settings for this device from storage so UI reflects persisted prefs even before connect
+          get().hydrateDeviceSettings(device.id).catch(() => {});
         };
 
         const onDeviceUpdated = (device: Device) => {
@@ -961,6 +964,9 @@ export const useBLEStore = create<BLEState>()(
       
       connect: async (deviceId: string) => {
         try {
+          const { dispatch } = get();
+          // Optimistically set connecting state for immediate UI feedback
+          dispatch({ type: 'CONNECTION_STARTED', payload: { deviceId } });
           const ble = (window as any).bleAPI;
           await ble.connect(deviceId);
         } catch (error) {
@@ -1233,7 +1239,17 @@ export const useBLEStore = create<BLEState>()(
 
       // Persistence helpers
       persistDeviceSubscriptions: async (deviceId: string) => {
-        const subs = get().getActiveSubscriptions(deviceId);
+        // Persist actual active subscriptions from connection state to avoid UI desync
+        const state = get();
+        const connection = state.connections[deviceId];
+        const subs: Array<{ serviceId: string; characteristicId: string }> = [];
+        if (connection) {
+          for (const [svcId, svc] of Object.entries(connection.services)) {
+            for (const [chId, ch] of Object.entries(svc.characteristics)) {
+              if (ch.subscribed) subs.push({ serviceId: svcId, characteristicId: chId });
+            }
+          }
+        }
         const key = `device:${deviceId}:subscriptions`;
         await storage.set(key, subs);
       },
@@ -1259,8 +1275,9 @@ export const useBLEStore = create<BLEState>()(
           console.warn('Failed to restore device settings', e);
         }
 
-        // Restore subscriptions
+        // Restore subscriptions (slight delay to ensure device stack is ready)
         try {
+          await new Promise((r) => setTimeout(r, 100));
           const subsKey = `device:${deviceId}:subscriptions`;
           const savedSubs = await storage.get<Array<{ serviceId: string; characteristicId: string }>>(subsKey, []);
           const state = get();
@@ -1268,13 +1285,36 @@ export const useBLEStore = create<BLEState>()(
           if (!connection || !connection.services) return;
           const toNotify: string[] = [];
           const toIndicate: string[] = [];
+          // helper to collapse 128-bit SIG UUIDs to short 16-bit string
+          const collapse = (uuid: string) => {
+            const u = uuid?.toLowerCase();
+            const base = '-0000-1000-8000-00805f9b34fb';
+            return (u && u.length === 36 && u.endsWith(base) && u.startsWith('0000')) ? u.slice(4, 8).toUpperCase() : uuid;
+          };
           for (const sub of savedSubs || []) {
-            const svc = connection.services[sub.serviceId];
-            const ch = svc?.characteristics[sub.characteristicId];
+            // Resolve service by exact UUID or by collapsed short form
+            let svc = connection.services[sub.serviceId];
+            if (!svc) {
+              const targetShort = collapse(sub.serviceId);
+              svc = Object.values(connection.services).find(s => collapse(s.uuid) === targetShort) as any;
+            }
+            // Resolve characteristic by exact UUID or collapsed form
+            let ch = svc && svc.characteristics ? svc.characteristics[sub.characteristicId] : undefined;
+            if (!ch && svc && svc.characteristics) {
+              const targetShort = collapse(sub.characteristicId);
+              const foundKey = Object.keys(svc.characteristics).find((cid: string) => collapse(cid) === targetShort);
+              ch = foundKey ? (svc.characteristics as any)[foundKey] : undefined;
+              // If foundKey differs, adjust sub ids for API call
+              if (foundKey) {
+                sub.characteristicId = foundKey;
+              }
+            }
             if (!svc || !ch) continue;
             try {
-              await state.subscribe(deviceId, sub.serviceId, sub.characteristicId);
-              const key = `${sub.serviceId}:${sub.characteristicId}`;
+              const realServiceId = svc.uuid;
+              const realCharacteristicId = ch.uuid;
+              await state.subscribe(deviceId, realServiceId, realCharacteristicId);
+              const key = `${realServiceId}:${realCharacteristicId}`;
               if (ch.capabilities.notify) toNotify.push(key);
               else if (ch.capabilities.indicate) toIndicate.push(key);
             } catch (e) {
@@ -1316,6 +1356,17 @@ export const useBLEStore = create<BLEState>()(
         } catch (e) {
           console.warn('Failed to restore write selection', e);
         }
+      }
+      ,
+      hydrateDeviceSettings: async (deviceId: string) => {
+        try {
+          const settingsKey = `device:${deviceId}:settings`;
+          const savedSettings = await storage.get<DeviceSettings>(settingsKey);
+          if (savedSettings) {
+            const { dispatch } = get();
+            dispatch({ type: 'DEVICE_SETTINGS_UPDATED', payload: { deviceId, settings: savedSettings } });
+          }
+        } catch {}
       }
     })),
     {

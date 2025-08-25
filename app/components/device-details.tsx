@@ -24,6 +24,7 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
   } = useBLEStore();
 
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   const connection = connections[device.id] || null;
   const connectedDevices = Object.values(devices).filter(d => d.connected);
@@ -99,7 +100,12 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
   };
 
   const handleConnect = async () => {
-    await connect(device.id);
+    setIsConnecting(true);
+    try {
+      await connect(device.id);
+    } finally {
+      setIsConnecting(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -127,7 +133,7 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
     }
   };
 
-  const isActionDisabled = device.connectionStatus === 'connecting' || device.connectionStatus === 'disconnecting' || isDisconnecting;
+  const isActionDisabled = device.connectionStatus === 'connecting' || isConnecting || device.connectionStatus === 'disconnecting' || isDisconnecting;
   const [expanded, setExpanded] = useState(!device.connected);
 
   // Auto-collapse when a device transitions to connected; expand when disconnected
@@ -238,7 +244,7 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
           <div className="flex justify-center">
             <Button onClick={handleConnect} disabled={isActionDisabled} size="lg" className="w-48">
               <Wifi className="h-5 w-5 mr-2" />
-              {device.connectionStatus === 'connecting' ? 'Connecting…' : 'Connect'}
+              {device.connectionStatus === 'connecting' || isConnecting ? 'Connecting…' : 'Connect'}
             </Button>
           </div>
         </CardContent>

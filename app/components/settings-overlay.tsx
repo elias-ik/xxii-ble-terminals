@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -41,6 +41,32 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
     const val = currentSettings.rxDelimiter || '';
     return val && !delimKnown.includes(val) ? val : '';
   });
+
+  // Sync local overlay state when store settings change (e.g., after hydration)
+  useEffect(() => {
+    setSettings(currentSettings);
+    // Re-derive custom fields
+    setCustomStart(() => {
+      const known = ['\x02'];
+      const val = currentSettings.messageStart || '';
+      return val && !known.includes(val) ? val : '';
+    });
+    setCustomDelimiter(() => {
+      const known = ['\x03', '\n', '\r\n', ','];
+      const val = currentSettings.messageDelimiter || '';
+      return val && !known.includes(val) ? val : '';
+    });
+    setRxCustomStart(() => {
+      const known = ['\x02'];
+      const val = currentSettings.rxStart || '';
+      return val && !known.includes(val) ? val : '';
+    });
+    setRxCustomDelimiter(() => {
+      const known = ['\x03', '\n', '\r\n', ','];
+      const val = currentSettings.rxDelimiter || '';
+      return val && !known.includes(val) ? val : '';
+    });
+  }, [currentSettings]);
 
   const handleSettingChange = (key: keyof DeviceSettings, value: any) => {
     const newSettings = { ...settings, [key]: value };
