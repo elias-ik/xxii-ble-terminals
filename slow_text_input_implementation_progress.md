@@ -6,6 +6,7 @@
 - The input now focuses when the selected characteristic changes via the `focusWhenKey` prop.
 
 Next steps:
+- Virtualize the device list and memoize rows for scanning responsiveness.
 - Extract the virtualized console list into a separate component with store selectors.
 - Precompute and cache formatted text per message on append.
 

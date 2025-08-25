@@ -813,9 +813,10 @@ export const useBLEStore = create<BLEState>()(
         };
         const scheduleFlush = () => {
           if (flushTimer != null) return;
+          // time-sliced batching: ~150ms cadence
           flushTimer = window.setTimeout(() => {
             flushNow();
-          }, 1000);
+          }, 150);
         };
 
         const onScanStatus = (evt: { status: 'idle' | 'scanning' | 'completed' | 'failed' | 'started'; deviceCount?: number; error?: string }) => {

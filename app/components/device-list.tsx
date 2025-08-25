@@ -1,4 +1,5 @@
-import React, { memo, useMemo } from 'react';
+import React, { memo, useEffect, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,7 +39,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     );
   }
 
-  const filteredDevices = getFilteredDevices();
+  // Note: filteredDevices deliberately not computed here to avoid extra work; rely on sortedDevices only
   // Helper must be defined before use in sorting
   const isUnsupportedName = (name: string | undefined) => {
     if (!name) return false;
@@ -177,6 +178,26 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     }
   };
 
+  // Virtualization setup
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const root = scrollAreaRef.current;
+    if (!root) return;
+    const vp = root.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null;
+    viewportRef.current = vp;
+  }, []);
+
+  const rowVirtualizer = useVirtualizer({
+    count: sortedDevices.length,
+    getScrollElement: () => viewportRef.current as HTMLElement | null,
+    estimateSize: () => 56,
+    overscan: 20,
+    getItemKey: (index) => (sortedDevices[index]?.id ?? index),
+  });
+  const virtualItems = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+
   return (
     <div className="h-full flex flex-col min-h-0">
 
@@ -209,7 +230,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
       </div>
 
       {/* Device List */}
-      <ScrollArea className="flex-1 min-h-0">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 min-h-0">
         <div className="p-2">
           {sortedDevices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
@@ -235,41 +256,52 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
               )}
             </div>
           ) : (
-            sortedDevices.map((device) => {
-              const isSelected = selectedDevice?.id === device.id;
-              const statusColor = getStatusDotColor(device);
-              const statusTitle = getStatusDotTitle(device);
-              const accessibleLabel = generateAccessibleLabel('device-row', device);
-              
-              return (
-                <div
-                  key={device.id}
-                  className={`px-2 py-1 border-b cursor-pointer select-none ${
-                    isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
-                  }`}
-                  onClick={() => handleDeviceClick(device.id)}
-                  onKeyDown={(e) => handleDeviceKeyDown(e, device.id)}
-                  tabIndex={0}
-                  role="button"
-                  aria-label={accessibleLabel}
-                  aria-pressed={isSelected}
-                >
-                  <div className="flex-1 min-w-0">
-                    {/* Line 1: status dot, name, connection badge */}
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: statusColor }}
-                        role="img"
-                        aria-label={`Status: ${statusTitle}`}
-                        title={statusTitle}
-                      />
-                      {(() => {
-                        const fullName = getDeviceDisplayName(device);
-                        const maxChars = 26;
-                        const isTruncated = fullName.length > maxChars;
-                        const shown = truncateWithDots(fullName, maxChars);
-                        return (
+            <div className="relative w-full" style={{ height: totalSize }}>
+              {virtualItems.map((vItem) => {
+                const device = sortedDevices[vItem.index];
+                const isSelected = selectedDevice?.id === device.id;
+                const statusColor = getStatusDotColor(device);
+                const statusTitle = getStatusDotTitle(device);
+                const accessibleLabel = generateAccessibleLabel('device-row', device);
+                const fullName = getDeviceDisplayName(device);
+                const maxChars = 26;
+                const isTruncated = fullName.length > maxChars;
+                const shown = truncateWithDots(fullName, maxChars);
+                return (
+                  <div
+                    key={device.id}
+                    ref={rowVirtualizer.measureElement}
+                    data-index={vItem.index}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${vItem.start}px)`,
+                      willChange: 'transform',
+                      contain: 'layout paint',
+                    }}
+                  >
+                    <div
+                      className={`px-2 py-1 border-b cursor-pointer select-none ${
+                        isSelected ? 'bg-primary/10' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => handleDeviceClick(device.id)}
+                      onKeyDown={(e) => handleDeviceKeyDown(e, device.id)}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={accessibleLabel}
+                      aria-pressed={isSelected}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: statusColor }}
+                            role="img"
+                            aria-label={`Status: ${statusTitle}`}
+                            title={statusTitle}
+                          />
                           <HoverCard openDelay={150}>
                             <HoverCardTrigger asChild>
                               <span className="font-medium text-[13px] cursor-default">
@@ -282,25 +314,23 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                               </HoverCardContent>
                             )}
                           </HoverCard>
-                        );
-                      })()}
-                      <div className="ml-auto flex items-center gap-2">
-                        {getConnectionBadge(device)}
+                          <div className="ml-auto flex items-center gap-2">
+                            {getConnectionBadge(device)}
+                          </div>
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between text-[11px] text-muted-foreground leading-tight">
+                          <span className="font-mono">{truncateMiddle(device.address || '')}</span>
+                          <span className="flex items-center gap-1">
+                            <span className={getRssiColor(device.rssi)}>{device.rssi}dBm</span>
+                            <span>({getRssiStrength(device.rssi)})</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
-
-                    {/* Line 2: full MAC, RSSI + strength */}
-                    <div className="mt-0.5 flex items-center justify-between text-[11px] text-muted-foreground leading-tight">
-                      <span className="font-mono">{truncateMiddle(device.address || '')}</span>
-                      <span className="flex items-center gap-1">
-                        <span className={getRssiColor(device.rssi)}>{device.rssi}dBm</span>
-                        <span>({getRssiStrength(device.rssi)})</span>
-                      </span>
-                    </div>
                   </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
           {/* Bottom spacer to mirror top padding for symmetry */}
           <div className="h-2" />
