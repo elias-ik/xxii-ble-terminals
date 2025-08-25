@@ -93,32 +93,32 @@ All UI uses shadcn/ui components with theme-aware tokens.
 
 ```mermaid
 flowchart LR
-  subgraph Renderer(UI)
-    React[React Router + shadcn/ui]
-    Store[Zustand BLE Store]
+  subgraph Renderer["UI"]
+    React["React Router + shadcn/ui"]
+    Store["Zustand BLE Store"]
     Store -->|dispatch/selectors| React
   end
 
-  subgraph BLE Client Abstraction
-    IPC[ipc-client]
-    WebBLE[webbluetooth-client]
-    Mock[mock-client]
+  subgraph BLE_Client["BLE Client Abstraction"]
+    IPC["ipc-client"]
+    WebBLE["webbluetooth-client"]
+    Mock["mock-client"]
   end
 
   React --> Store
-  Store -->|events & calls| BLE[bleClient]
+  Store -->|events & calls| BLE["bleClient"]
   BLE --> IPC
   BLE --> WebBLE
   BLE --> Mock
 
-  subgraph Electron Main
-    Main[main.js]
-    Preload[preload.mjs]
+  subgraph Electron_Main["Electron Main"]
+    Main["main.js"]
+    Preload["preload.mjs"]
   end
 
   IPC <---> Preload
   Preload <---> Main
-  Main -->|webbluetooth| OS[System BLE]
+  Main -->|webbluetooth| OS["System BLE"]
 ```
 
 ### Key modules
