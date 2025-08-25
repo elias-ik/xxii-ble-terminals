@@ -16,44 +16,16 @@ interface DeviceListProps {
 }
 
 export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) {
-  const {
-    getFilteredDevices,
-    getSortedFilteredDevices,
-    searchQuery,
-    setSearchQuery,
-    simulateConnectionLoss,
-    simulateReconnection,
-    scan,
-    getIsScanning,
-    devices,
-    sidebarCollapsed,
-    toggleSidebarCollapse
-  } = useBLEStore();
+  const searchQuery = useBLEStore((s) => s.searchQuery);
+  const setSearchQuery = useBLEStore((s) => s.setSearchQuery);
+  const scan = useBLEStore((s) => s.scan);
+  const getIsScanning = useBLEStore((s) => s.getIsScanning);
+  const sortedDevices = useBLEStore((s) => s.getSortedFilteredDevices());
+  const devices = useBLEStore((s) => s.devices);
 
-  // Safety check for store initialization
-  if (!devices) {
-    return (
-      <div className="text-center py-8 text-muted-foreground">
-        <WifiOff className="h-8 w-8 mx-auto mb-2 opacity-50" />
-        <p className="text-sm">Initializing...</p>
-      </div>
-    );
-  }
-
-  // Note: filteredDevices deliberately not computed here to avoid extra work; rely on sortedDevices only
-  // Helper must be defined before use in sorting
-  const isUnsupportedName = (name: string | undefined) => {
-    if (!name) return false;
-    return name === 'Unsupported' || /^Unknown or Unsupported Device \(.*\)$/.test(name);
-  };
-  // Prefer store-side sorted selector; falls back to UI sort only if needed
-  const sortedDevices = getSortedFilteredDevices();
   const isScanning = getIsScanning();
   const hasScanned = devices && Object.keys(devices).length > 0;
-  
-  // Performance optimized - removed debug logging
 
-  // Helper functions
   const getStatusDotColor = (device: any) => {
     switch (device.connectionStatus) {
       case 'connected':
@@ -145,13 +117,6 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
 
   const handleDeviceClick = (deviceId: string) => {
     onDeviceSelect(deviceId);
-  };
-
-  const handleDeviceKeyDown = (event: React.KeyboardEvent, deviceId: string) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      handleDeviceClick(deviceId);
-    }
   };
 
   const handleRescan = async () => {

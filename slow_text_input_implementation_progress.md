@@ -7,6 +7,7 @@
 
 Next steps:
 - Virtualize the device list and memoize rows for scanning responsiveness.
+- Narrow subscriptions in `DeviceList` to stable selectors to reduce re-renders.
 - Extract the virtualized console list into a separate component with store selectors.
 - Precompute and cache formatted text per message on append.
 
