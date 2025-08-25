@@ -38,7 +38,10 @@ try {
   if (typeof window !== 'undefined' && (window as any).bleAPI) {
     impl = ipcBLEClient;
   }
-} catch {}
+  console.log('using ipc client');
+} catch {
+  console.log('using mock client');
+}
 
 export const bleClient: BLEClient = impl;
 

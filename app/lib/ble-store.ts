@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { devtools } from 'zustand/middleware';
 import { storage } from '@/lib/storage';
+import { bleClient } from '@/lib/ble';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -772,7 +773,7 @@ export const useBLEStore = create<BLEState>()(
         });
       },
       
-      // Mock Event Bus Integration (no real BLE API needed)
+      // Event Bus Integration (bleClient handles Electron/web differences)
       setupEventListeners: () => {
         // Avoid double-binding in dev HMR
         const w = window as any;
@@ -780,12 +781,6 @@ export const useBLEStore = create<BLEState>()(
         w.__bleHandlersBound = true;
 
         const { dispatch } = get();
-        const ble = (window as any)?.bleAPI;
-        if (!ble) {
-          console.warn('bleAPI not available on window');
-          return;
-        }
-
         // Handlers
         const pendingDiscoveries: Record<string, Device> = {};
         let flushTimer: number | null = null;
@@ -828,7 +823,7 @@ export const useBLEStore = create<BLEState>()(
           pendingDiscoveries[device.id] = device;
           scheduleFlush();
         };
-        // Support batched discovery from main via preload bridge
+        // Support batched discovery
         const onDevicesDiscovered = (evt: { devices: Device[] } | Device[]) => {
           const list = Array.isArray(evt) ? evt : (evt?.devices || []);
           for (const d of list) {
@@ -967,37 +962,28 @@ export const useBLEStore = create<BLEState>()(
         };
 
         // Save handlers for cleanup
-        // Bind to preload-exposed BLE API events
         w.__bleHandlers = { onScanStatus, onDeviceDiscovered, onDevicesDiscovered, onDeviceUpdated, onConnectionChanged, onSubscriptionChanged, onCharacteristicValue };
-        ble.onScanStatus(onScanStatus);
-        ble.onDeviceDiscovered((evt: any) => onDeviceDiscovered(evt.device ?? evt));
-        if (ble.onDevicesDiscovered) {
-          ble.onDevicesDiscovered((evt: any) => onDevicesDiscovered(evt));
-        }
-        ble.onDeviceUpdated((evt: any) => onDeviceUpdated(evt.device ?? evt));
-        ble.onConnectionChanged((evt: any) => {
-          const mapped = { deviceId: evt.deviceId, state: (evt.status || evt.state), connection: evt.connection };
-          onConnectionChanged(mapped as any);
-        });
-        ble.onSubscriptionChanged(onSubscriptionChanged);
-        ble.onCharacteristicValue((evt: any) => onCharacteristicValue({ ...evt, direction: evt.direction || 'notification' }));
+        bleClient.on('scanStatus', onScanStatus as any);
+        bleClient.on('deviceDiscovered', (evt: any) => onDeviceDiscovered(evt.device ?? evt));
+        bleClient.on('deviceUpdated', (evt: any) => onDeviceUpdated(evt.device ?? evt));
+        bleClient.on('connectionChanged', (evt: any) => onConnectionChanged({ deviceId: evt.deviceId, state: (evt.status || evt.state), connection: evt.connection } as any));
+        bleClient.on('subscriptionChanged', onSubscriptionChanged as any);
+        bleClient.on('characteristicValue', (evt: any) => onCharacteristicValue({ ...evt, direction: evt.direction || 'notification' }));
+        // Optional batched event: fan out as single discoveries
+        (bleClient as any).on && (bleClient as any).on('devicesDiscovered', onDevicesDiscovered as any);
       },
       
       cleanupEventListeners: () => {
         const w = window as any;
         if (!w.__bleHandlersBound || !w.__bleHandlers) return;
         const h = w.__bleHandlers;
-        const ble = (window as any)?.bleAPI;
-        if (ble) {
-          // No explicit off API in types; rely on remove* where available
-          if (ble.removeScanStatusListener) ble.removeScanStatusListener(h.onScanStatus);
-          if (ble.removeDeviceDiscoveredListener) ble.removeDeviceDiscoveredListener(h.onDeviceDiscovered);
-          if (ble.removeDeviceUpdatedListener) ble.removeDeviceUpdatedListener(h.onDeviceUpdated);
-          if (ble.removeDevicesDiscoveredListener) ble.removeDevicesDiscoveredListener(h.onDevicesDiscovered);
-          if (ble.removeConnectionChangedListener) ble.removeConnectionChangedListener(h.onConnectionChanged);
-          if (ble.removeSubscriptionChangedListener) ble.removeSubscriptionChangedListener(h.onSubscriptionChanged);
-          if (ble.removeCharacteristicValueListener) ble.removeCharacteristicValueListener(h.onCharacteristicValue);
-        }
+        // No standard off for batched; rely on emitter off
+        bleClient.off('scanStatus' as any, h.onScanStatus);
+        bleClient.off('deviceDiscovered' as any, h.onDeviceDiscovered);
+        bleClient.off('deviceUpdated' as any, h.onDeviceUpdated);
+        bleClient.off('connectionChanged' as any, h.onConnectionChanged);
+        bleClient.off('subscriptionChanged' as any, h.onSubscriptionChanged);
+        bleClient.off('characteristicValue' as any, h.onCharacteristicValue);
         delete w.__bleHandlers;
         w.__bleHandlersBound = false;
       },
@@ -1020,8 +1006,7 @@ export const useBLEStore = create<BLEState>()(
       // High-level actions (composed from multiple dispatches)
       scan: async () => {
         try {
-          const ble = (window as any).bleAPI;
-          await ble.scan();
+          await bleClient.scan();
         } catch (error) {
           const { dispatch } = get();
           dispatch({ type: 'SCAN_FAILED', payload: { error: error instanceof Error ? error.message : 'Unknown error', completedAt: new Date() } });
@@ -1033,8 +1018,7 @@ export const useBLEStore = create<BLEState>()(
           const { dispatch } = get();
           // Optimistically set connecting state for immediate UI feedback
           dispatch({ type: 'CONNECTION_STARTED', payload: { deviceId } });
-          const ble = (window as any).bleAPI;
-          await ble.connect(deviceId);
+          await bleClient.connect(deviceId);
         } catch (error) {
           const { dispatch } = get();
           dispatch({ type: 'CONNECTION_FAILED', payload: { deviceId, error: error instanceof Error ? error.message : 'Unknown error' } });
@@ -1043,8 +1027,7 @@ export const useBLEStore = create<BLEState>()(
       
       disconnect: async (deviceId: string) => {
         try {
-          const ble = (window as any).bleAPI;
-          await ble.disconnect(deviceId);
+          await bleClient.disconnect(deviceId);
         } catch (error) {
           const { dispatch } = get();
           dispatch({ type: 'DISCONNECTION_FAILED', payload: { deviceId, error: error instanceof Error ? error.message : 'Unknown error' } });
@@ -1053,8 +1036,7 @@ export const useBLEStore = create<BLEState>()(
       
       read: async (deviceId: string, serviceId: string, characteristicId: string) => {
         try {
-          const ble = (window as any).bleAPI;
-          await ble.read(deviceId, serviceId, characteristicId);
+          await bleClient.read(deviceId, serviceId, characteristicId);
         } catch (error) {
           console.error('Read failed:', error);
         }
@@ -1087,8 +1069,7 @@ export const useBLEStore = create<BLEState>()(
             deviceId
           };
           get().dispatch({ type: 'CONSOLE_ENTRY_ADDED', payload: consoleEntry });
-          const ble = (window as any).bleAPI;
-          await ble.write(deviceId, serviceId, characteristicId, finalBytes);
+          await bleClient.write(deviceId, serviceId, characteristicId, finalBytes);
         } catch (error) {
           console.error('Write failed:', error);
         }
@@ -1096,8 +1077,7 @@ export const useBLEStore = create<BLEState>()(
       
       subscribe: async (deviceId: string, serviceId: string, characteristicId: string) => {
         try {
-          const ble = (window as any).bleAPI;
-          await ble.subscribe(deviceId, serviceId, characteristicId, () => {});
+          await bleClient.subscribe(deviceId, serviceId, characteristicId);
         } catch (error) {
           console.error('Subscribe failed:', error);
         }
@@ -1105,8 +1085,7 @@ export const useBLEStore = create<BLEState>()(
       
       unsubscribe: async (deviceId: string, serviceId: string, characteristicId: string) => {
         try {
-          const ble = (window as any).bleAPI;
-          await ble.unsubscribe(deviceId, serviceId, characteristicId);
+          await bleClient.unsubscribe(deviceId, serviceId, characteristicId);
         } catch (error) {
           console.error('Unsubscribe failed:', error);
         }

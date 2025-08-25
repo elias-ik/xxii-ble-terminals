@@ -1,4 +1,4 @@
-import type { BLEClient, BLEEventMap } from './client';
+import type { BLEClient, BLEEventMap } from './index';
 import type { Connection } from '@/lib/ble-store';
 
 type Handler<K extends keyof BLEEventMap> = (payload: BLEEventMap[K]) => void;
