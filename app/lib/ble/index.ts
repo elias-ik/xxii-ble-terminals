@@ -31,11 +31,12 @@ export interface BLEClient {
 
 // Storage-style switching: in Electron (main/renderer), prefer real webbluetooth; in plain web, use mock.
 import { mockBLEClient } from './mock-client.ts';
+import { ipcBLEClient } from './ipc-client';
 let impl: BLEClient = mockBLEClient;
 try {
-  if (typeof process !== 'undefined' && process.versions && process.versions.electron) {
-    const mod = await import('./webbluetooth-client.ts');
-    impl = (mod as { webBluetoothClient: BLEClient }).webBluetoothClient;
+  // If running in Electron renderer with preload exposing bleAPI, use IPC client
+  if (typeof window !== 'undefined' && (window as any).bleAPI) {
+    impl = ipcBLEClient;
   }
 } catch {}
 

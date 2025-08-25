@@ -757,7 +757,19 @@ export const useBLEStore = create<BLEState>()(
       
       // Actions
       dispatch: (action: BLEAction) => {
-        set((state) => bleReducer(state, action));
+        // Optionally reduce dev overhead during scans by skipping action history in reducer
+        set((state) => {
+          // Temporarily bypass action history overhead while scanning
+          const wasScanning = state.scanStatus.status === 'scanning';
+          if (wasScanning && typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'development') {
+            const clone = { ...state, actionHistory: state.actionHistory } as any;
+            const next = bleReducer(clone, action);
+            // Keep actionHistory unchanged to avoid growth during scan bursts
+            next.actionHistory = state.actionHistory;
+            return next;
+          }
+          return bleReducer(state, action);
+        });
       },
       
       // Mock Event Bus Integration (no real BLE API needed)
@@ -785,7 +797,11 @@ export const useBLEStore = create<BLEState>()(
           const arr = Object.values(pendingDiscoveries);
           if (arr.length > 0) {
             dispatch({ type: 'DEVICES_DISCOVERED', payload: arr });
-            arr.forEach((d) => get().hydrateDeviceSettings(d.id).catch(() => {}));
+            // Defer per-device settings hydration to reduce churn during scanning
+            const isScanning = get().scanStatus.status === 'scanning';
+            if (!isScanning) {
+              arr.forEach((d) => get().hydrateDeviceSettings(d.id).catch(() => {}));
+            }
             for (const k of Object.keys(pendingDiscoveries)) delete pendingDiscoveries[k];
           }
         };
@@ -810,6 +826,14 @@ export const useBLEStore = create<BLEState>()(
 
         const onDeviceDiscovered = (device: Device) => {
           pendingDiscoveries[device.id] = device;
+          scheduleFlush();
+        };
+        // Support batched discovery from main via preload bridge
+        const onDevicesDiscovered = (evt: { devices: Device[] } | Device[]) => {
+          const list = Array.isArray(evt) ? evt : (evt?.devices || []);
+          for (const d of list) {
+            pendingDiscoveries[d.id] = d;
+          }
           scheduleFlush();
         };
 
@@ -944,9 +968,12 @@ export const useBLEStore = create<BLEState>()(
 
         // Save handlers for cleanup
         // Bind to preload-exposed BLE API events
-        w.__bleHandlers = { onScanStatus, onDeviceDiscovered, onDeviceUpdated, onConnectionChanged, onSubscriptionChanged, onCharacteristicValue };
+        w.__bleHandlers = { onScanStatus, onDeviceDiscovered, onDevicesDiscovered, onDeviceUpdated, onConnectionChanged, onSubscriptionChanged, onCharacteristicValue };
         ble.onScanStatus(onScanStatus);
         ble.onDeviceDiscovered((evt: any) => onDeviceDiscovered(evt.device ?? evt));
+        if (ble.onDevicesDiscovered) {
+          ble.onDevicesDiscovered((evt: any) => onDevicesDiscovered(evt));
+        }
         ble.onDeviceUpdated((evt: any) => onDeviceUpdated(evt.device ?? evt));
         ble.onConnectionChanged((evt: any) => {
           const mapped = { deviceId: evt.deviceId, state: (evt.status || evt.state), connection: evt.connection };
@@ -966,6 +993,7 @@ export const useBLEStore = create<BLEState>()(
           if (ble.removeScanStatusListener) ble.removeScanStatusListener(h.onScanStatus);
           if (ble.removeDeviceDiscoveredListener) ble.removeDeviceDiscoveredListener(h.onDeviceDiscovered);
           if (ble.removeDeviceUpdatedListener) ble.removeDeviceUpdatedListener(h.onDeviceUpdated);
+          if (ble.removeDevicesDiscoveredListener) ble.removeDevicesDiscoveredListener(h.onDevicesDiscovered);
           if (ble.removeConnectionChangedListener) ble.removeConnectionChangedListener(h.onConnectionChanged);
           if (ble.removeSubscriptionChangedListener) ble.removeSubscriptionChangedListener(h.onSubscriptionChanged);
           if (ble.removeCharacteristicValueListener) ble.removeCharacteristicValueListener(h.onCharacteristicValue);

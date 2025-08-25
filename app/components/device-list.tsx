@@ -16,6 +16,7 @@ interface DeviceListProps {
 export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) {
   const {
     getFilteredDevices,
+    getSortedFilteredDevices,
     searchQuery,
     setSearchQuery,
     simulateConnectionLoss,
@@ -43,21 +44,8 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
     if (!name) return false;
     return name === 'Unsupported' || /^Unknown or Unsupported Device \(.*\)$/.test(name);
   };
-  // UI-side sorting: connected first, then unsupported to bottom, then by strongest RSSI
-  const sortedDevices = useMemo(() => [...filteredDevices].sort((a: any, b: any) => {
-    // 1) Connection status
-    if (a.connected && !b.connected) return -1;
-    if (!a.connected && b.connected) return 1;
-    // 2) Unsupported name to bottom
-    const aUnsupported = isUnsupportedName(a?.name);
-    const bUnsupported = isUnsupportedName(b?.name);
-    if (aUnsupported && !bUnsupported) return 1;
-    if (!aUnsupported && bUnsupported) return -1;
-    // 3) RSSI descending
-    const rssiA = typeof a.rssi === 'number' ? a.rssi : -999;
-    const rssiB = typeof b.rssi === 'number' ? b.rssi : -999;
-    return rssiB - rssiA;
-  }), [filteredDevices]);
+  // Prefer store-side sorted selector; falls back to UI sort only if needed
+  const sortedDevices = getSortedFilteredDevices();
   const isScanning = getIsScanning();
   const hasScanned = devices && Object.keys(devices).length > 0;
   
@@ -223,7 +211,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
       {/* Device List */}
       <ScrollArea className="flex-1 min-h-0">
         <div className="p-2">
-          {filteredDevices.length === 0 ? (
+          {sortedDevices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <WifiOff className="h-8 w-8 mx-auto mb-2 opacity-50" />
               {!hasScanned ? (
