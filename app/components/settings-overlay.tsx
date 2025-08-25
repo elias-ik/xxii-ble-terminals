@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, AlertTriangle, CheckCircle } from "lucide-react";
 import { useBLEStore, type DeviceSettings } from "@/lib/ble-store";
+import { isElectron } from "@/lib/env";
 
 interface SettingsOverlayProps {
   deviceId: string;
@@ -109,6 +110,8 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
     onOpenChange(false);
   };
 
+  const framingDisabled = !isElectron;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
@@ -180,27 +183,35 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
           <Separator />
 
           {/* Framing Category */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-semibold">Framing</Label>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm">Separate RX</Label>
-                <Switch
-                  checked={!!settings.splitFraming}
-                  onCheckedChange={(v) => handleSettingChange('splitFraming', v)}
-                />
+          <div className="relative">
+            {framingDisabled && (
+              <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-sm flex items-center justify-center rounded-md">
+                <span className="text-xs text-muted-foreground">not available in demo</span>
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label className="text-sm">Message Start</Label>
-                {(() => {
-                  const startKnown = ['\x02'];
-                  const startSelectValue = (!settings.messageStart || settings.messageStart === '')
-                    ? 'none'
-                    : (startKnown.includes(settings.messageStart) ? 'stx' : 'custom');
-                  return (
+            )}
+            <div className={`space-y-3 ${framingDisabled ? 'pointer-events-none opacity-50' : ''}`}>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold">Framing</Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm">Separate RX</Label>
+                  <Switch
+                    disabled={framingDisabled}
+                    checked={!!settings.splitFraming}
+                    onCheckedChange={(v) => handleSettingChange('splitFraming', v)}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">Message Start</Label>
+                  {(() => {
+                    const startKnown = ['\x02'];
+                    const startSelectValue = (!settings.messageStart || settings.messageStart === '')
+                      ? 'none'
+                      : (startKnown.includes(settings.messageStart) ? 'stx' : 'custom');
+                    return (
                 <Select
+                  disabled={framingDisabled}
                   value={startSelectValue}
                   onValueChange={(value: string) => {
                     if (value === 'none') updateFraming('messageStart', '');
@@ -212,7 +223,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     }
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger disabled={framingDisabled}>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
@@ -221,40 +232,42 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     <SelectItem value="custom">Custom…</SelectItem>
                   </SelectContent>
                 </Select>
-                  );
-                })()}
-                {(() => {
-                  const startKnown = ['\x02'];
-                  const startSelectValue = (!settings.messageStart || settings.messageStart === '')
-                    ? 'none'
-                    : (startKnown.includes(settings.messageStart) ? 'stx' : 'custom');
-                  return startSelectValue === 'custom' && (
+                    );
+                  })()}
+                  {(() => {
+                    const startKnown = ['\x02'];
+                    const startSelectValue = (!settings.messageStart || settings.messageStart === '')
+                      ? 'none'
+                      : (startKnown.includes(settings.messageStart) ? 'stx' : 'custom');
+                    return startSelectValue === 'custom' && (
                   <input
                     type="text"
                     value={customStart}
                     onChange={(e) => setCustomStart(e.target.value)}
                     onBlur={() => updateFraming('messageStart', customStart)}
+                    disabled={framingDisabled}
                     placeholder="e.g. \\xAA or ,"
                     className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
                   />
-                  );
-                })()}
-              </div>
+                    );
+                  })()}
+                </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm">Message Delimiter</Label>
-                {(() => {
-                  const delimKnown = ['\x03', '\n', '\r\n', ','];
-                  const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
-                    ? 'none'
-                    : (delimKnown.includes(settings.messageDelimiter) ? (
-                        settings.messageDelimiter === '\x03' ? 'etx' :
-                        settings.messageDelimiter === '\n' ? 'lf' :
-                        settings.messageDelimiter === '\r\n' ? 'crlf' :
-                        settings.messageDelimiter === ',' ? 'comma' : 'custom'
-                      ) : 'custom');
-                  return (
+                <div className="space-y-2">
+                  <Label className="text-sm">Message Delimiter</Label>
+                  {(() => {
+                    const delimKnown = ['\x03', '\n', '\r\n', ','];
+                    const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
+                      ? 'none'
+                      : (delimKnown.includes(settings.messageDelimiter) ? (
+                          settings.messageDelimiter === '\x03' ? 'etx' :
+                          settings.messageDelimiter === '\n' ? 'lf' :
+                          settings.messageDelimiter === '\r\n' ? 'crlf' :
+                          settings.messageDelimiter === ',' ? 'comma' : 'custom'
+                        ) : 'custom');
+                    return (
                 <Select
+                  disabled={framingDisabled}
                   value={delimSelectValue}
                   onValueChange={(value: string) => {
                     if (value === 'none') updateFraming('messageDelimiter', '');
@@ -269,7 +282,7 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     }
                   }}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger disabled={framingDisabled}>
                     <SelectValue placeholder="None" />
                   </SelectTrigger>
                   <SelectContent>
@@ -281,122 +294,124 @@ export function SettingsOverlay({ deviceId, open, onOpenChange }: SettingsOverla
                     <SelectItem value="custom">Custom…</SelectItem>
                   </SelectContent>
                 </Select>
-                  );
-                })()}
-                {(() => {
-                  const delimKnown = ['\x03', '\n', '\r\n', ','];
-                  const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
-                    ? 'none'
-                    : (delimKnown.includes(settings.messageDelimiter) ? (
-                        settings.messageDelimiter === '\x03' ? 'etx' :
-                        settings.messageDelimiter === '\n' ? 'lf' :
-                        settings.messageDelimiter === '\r\n' ? 'crlf' :
-                        settings.messageDelimiter === ',' ? 'comma' : 'custom'
-                      ) : 'custom');
-                  return delimSelectValue === 'custom' && (
+                    );
+                  })()}
+                  {(() => {
+                    const delimKnown = ['\x03', '\n', '\r\n', ','];
+                    const delimSelectValue = (!settings.messageDelimiter || settings.messageDelimiter === '')
+                      ? 'none'
+                      : (delimKnown.includes(settings.messageDelimiter) ? (
+                          settings.messageDelimiter === '\x03' ? 'etx' :
+                          settings.messageDelimiter === '\n' ? 'lf' :
+                          settings.messageDelimiter === '\r\n' ? 'crlf' :
+                          settings.messageDelimiter === ',' ? 'comma' : 'custom'
+                        ) : 'custom');
+                    return delimSelectValue === 'custom' && (
                   <input
                     type="text"
                     value={customDelimiter}
                     onChange={(e) => setCustomDelimiter(e.target.value)}
                     onBlur={() => updateFraming('messageDelimiter', customDelimiter)}
+                    disabled={framingDisabled}
                     placeholder="e.g. \\x03 or ;"
                     className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background"
                   />
-                  );
-                })()}
-              </div>
-            </div>
-            {settings.splitFraming && (
-              <>
-                <Separator />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label className="text-sm">RX Start</Label>
-                    {(() => {
-                      const startKnown = ['\x02'];
-                      const startSelectValue = (!settings.rxStart || settings.rxStart === '') ? 'none' : (startKnown.includes(settings.rxStart) ? 'stx' : 'custom');
-                      return (
-                        <Select value={startSelectValue} onValueChange={(value: string) => {
-                          if (value === 'none') handleSettingChange('rxStart', '');
-                          else if (value === 'stx') handleSettingChange('rxStart', '\x02');
-                          else {
-                            const lit = rxCustomStart && rxCustomStart.length > 0 ? rxCustomStart : '\\x';
-                            setRxCustomStart(lit);
-                            handleSettingChange('rxStart', lit);
-                          }
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="None" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="stx">STX (0x02)</SelectItem>
-                            <SelectItem value="custom">Custom…</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
-                    {(() => {
-                      const startKnown = ['\x02'];
-                      const startSelectValue = (!settings.rxStart || settings.rxStart === '') ? 'none' : (startKnown.includes(settings.rxStart) ? 'stx' : 'custom');
-                      return startSelectValue === 'custom' && (
-                        <input type="text" value={rxCustomStart} onChange={(e) => setRxCustomStart(e.target.value)} onBlur={() => handleSettingChange('rxStart', rxCustomStart)} placeholder="e.g. \\xAA or ," className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
-                      );
-                    })()}
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm">RX Delimiter</Label>
-                    {(() => {
-                      const delimKnown = ['\x03', '\n', '\r\n', ','];
-                      const delimSelectValue = (!settings.rxDelimiter || settings.rxDelimiter === '') ? 'none' : (
-                        settings.rxDelimiter === '\x03' ? 'etx' :
-                        settings.rxDelimiter === '\n' ? 'lf' :
-                        settings.rxDelimiter === '\r\n' ? 'crlf' :
-                        settings.rxDelimiter === ',' ? 'comma' : 'custom'
-                      );
-                      return (
-                        <Select value={delimSelectValue} onValueChange={(value: string) => {
-                          if (value === 'none') handleSettingChange('rxDelimiter', '');
-                          else if (value === 'etx') handleSettingChange('rxDelimiter', '\x03');
-                          else if (value === 'lf') handleSettingChange('rxDelimiter', '\n');
-                          else if (value === 'crlf') handleSettingChange('rxDelimiter', '\r\n');
-                          else if (value === 'comma') handleSettingChange('rxDelimiter', ',');
-                          else {
-                            const lit = rxCustomDelimiter && rxCustomDelimiter.length > 0 ? rxCustomDelimiter : '\\x';
-                            setRxCustomDelimiter(lit);
-                            handleSettingChange('rxDelimiter', lit);
-                          }
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="None" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="etx">ETX (0x03)</SelectItem>
-                            <SelectItem value="lf">\n</SelectItem>
-                            <SelectItem value="crlf">\r\n</SelectItem>
-                            <SelectItem value="comma">,</SelectItem>
-                            <SelectItem value="custom">Custom…</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      );
-                    })()}
-                    {(() => {
-                      const delimKnown = ['\x03', '\n', '\r\n', ','];
-                      const delimSelectValue = (!settings.rxDelimiter || settings.rxDelimiter === '') ? 'none' : (
-                        settings.rxDelimiter === '\x03' ? 'etx' :
-                        settings.rxDelimiter === '\n' ? 'lf' :
-                        settings.rxDelimiter === '\r\n' ? 'crlf' :
-                        settings.rxDelimiter === ',' ? 'comma' : 'custom'
-                      );
-                      return delimSelectValue === 'custom' && (
-                        <input type="text" value={rxCustomDelimiter} onChange={(e) => setRxCustomDelimiter(e.target.value)} onBlur={() => handleSettingChange('rxDelimiter', rxCustomDelimiter)} placeholder="e.g. \\x03 or ;" className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
-                      );
-                    })()}
-                  </div>
+                    );
+                  })()}
                 </div>
-              </>
-            )}
+              </div>
+              {settings.splitFraming && (
+                <>
+                  <Separator />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label className="text-sm">RX Start</Label>
+                      {(() => {
+                        const startKnown = ['\x02'];
+                        const startSelectValue = (!settings.rxStart || settings.rxStart === '') ? 'none' : (startKnown.includes(settings.rxStart) ? 'stx' : 'custom');
+                        return (
+                          <Select disabled={framingDisabled} value={startSelectValue} onValueChange={(value: string) => {
+                            if (value === 'none') handleSettingChange('rxStart', '');
+                            else if (value === 'stx') handleSettingChange('rxStart', '\x02');
+                            else {
+                              const lit = rxCustomStart && rxCustomStart.length > 0 ? rxCustomStart : '\\x';
+                              setRxCustomStart(lit);
+                              handleSettingChange('rxStart', lit);
+                            }
+                          }}>
+                            <SelectTrigger disabled={framingDisabled}>
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="stx">STX (0x02)</SelectItem>
+                              <SelectItem value="custom">Custom…</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
+                      {(() => {
+                        const startKnown = ['\x02'];
+                        const startSelectValue = (!settings.rxStart || settings.rxStart === '') ? 'none' : (startKnown.includes(settings.rxStart) ? 'stx' : 'custom');
+                        return startSelectValue === 'custom' && (
+                          <input type="text" value={rxCustomStart} onChange={(e) => setRxCustomStart(e.target.value)} onBlur={() => handleSettingChange('rxStart', rxCustomStart)} disabled={framingDisabled} placeholder="e.g. \\xAA or ," className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
+                        );
+                      })()}
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm">RX Delimiter</Label>
+                      {(() => {
+                        const delimKnown = ['\x03', '\n', '\r\n', ','];
+                        const delimSelectValue = (!settings.rxDelimiter || settings.rxDelimiter === '') ? 'none' : (
+                          settings.rxDelimiter === '\x03' ? 'etx' :
+                          settings.rxDelimiter === '\n' ? 'lf' :
+                          settings.rxDelimiter === '\r\n' ? 'crlf' :
+                          settings.rxDelimiter === ',' ? 'comma' : 'custom'
+                        );
+                        return (
+                          <Select disabled={framingDisabled} value={delimSelectValue} onValueChange={(value: string) => {
+                            if (value === 'none') handleSettingChange('rxDelimiter', '');
+                            else if (value === 'etx') handleSettingChange('rxDelimiter', '\x03');
+                            else if (value === 'lf') handleSettingChange('rxDelimiter', '\n');
+                            else if (value === 'crlf') handleSettingChange('rxDelimiter', '\r\n');
+                            else if (value === 'comma') handleSettingChange('rxDelimiter', ',');
+                            else {
+                              const lit = rxCustomDelimiter && rxCustomDelimiter.length > 0 ? rxCustomDelimiter : '\\x';
+                              setRxCustomDelimiter(lit);
+                              handleSettingChange('rxDelimiter', lit);
+                            }
+                          }}>
+                            <SelectTrigger disabled={framingDisabled}>
+                              <SelectValue placeholder="None" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">None</SelectItem>
+                              <SelectItem value="etx">ETX (0x03)</SelectItem>
+                              <SelectItem value="lf">\n</SelectItem>
+                              <SelectItem value="crlf">\r\n</SelectItem>
+                              <SelectItem value="comma">,</SelectItem>
+                              <SelectItem value="custom">Custom…</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        );
+                      })()}
+                      {(() => {
+                        const delimKnown = ['\x03', '\n', '\r\n', ','];
+                        const delimSelectValue = (!settings.rxDelimiter || settings.rxDelimiter === '') ? 'none' : (
+                          settings.rxDelimiter === '\x03' ? 'etx' :
+                          settings.rxDelimiter === '\n' ? 'lf' :
+                          settings.rxDelimiter === '\r\n' ? 'crlf' :
+                          settings.rxDelimiter === ',' ? 'comma' : 'custom'
+                        );
+                        return delimSelectValue === 'custom' && (
+                          <input type="text" value={rxCustomDelimiter} onChange={(e) => setRxCustomDelimiter(e.target.value)} onBlur={() => handleSettingChange('rxDelimiter', rxCustomDelimiter)} disabled={framingDisabled} placeholder="e.g. \\x03 or ;" className="w-full px-3 py-2 border border-input rounded-md text-sm bg-background" />
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           <Separator />
