@@ -96,6 +96,7 @@ export type BLEAction =
   | { type: 'DEVICES_DISCOVERED'; payload: Device[] }
   | { type: 'DEVICE_UPDATED'; payload: Device }
   | { type: 'DEVICE_REMOVED'; payload: { deviceId: string } }
+  | { type: 'DEVICES_CLEARED' }
   
   // Connection Management
   | { type: 'CONNECTION_STARTED'; payload: { deviceId: string } }
@@ -192,6 +193,7 @@ export interface BLEState {
   
   // High-level actions
   scan: () => Promise<void>;
+  clearDevices: () => void;
   connect: (deviceId: string) => Promise<void>;
   disconnect: (deviceId: string) => Promise<void>;
   read: (deviceId: string, serviceId: string, characteristicId: string) => Promise<void>;
@@ -290,6 +292,10 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
     case 'DEVICE_REMOVED':
       const { [action.payload.deviceId]: removed, ...remainingDevices } = newState.devices;
       newState.devices = remainingDevices;
+      break;
+      
+    case 'DEVICES_CLEARED':
+      newState.devices = {};
       break;
       
     // Connection Management
@@ -1052,6 +1058,11 @@ export const useBLEStore = create<BLEState>()(
           const { dispatch } = get();
           dispatch({ type: 'SCAN_FAILED', payload: { error: error instanceof Error ? error.message : 'Unknown error', completedAt: new Date() } });
         }
+      },
+      
+      clearDevices: () => {
+        const { dispatch } = get();
+        dispatch({ type: 'DEVICES_CLEARED' });
       },
       
       connect: async (deviceId: string) => {

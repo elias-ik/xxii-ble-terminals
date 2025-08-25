@@ -20,6 +20,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   const setSearchQuery = useBLEStore((s) => s.setSearchQuery);
   const scan = useBLEStore((s) => s.scan);
   const disconnect = useBLEStore((s) => s.disconnect);
+  const clearDevices = useBLEStore((s) => s.clearDevices);
   const getActiveConnections = useBLEStore((s) => s.getActiveConnections);
   const isScanning = useBLEStore((s) => s.scanStatus.status === 'scanning');
   
@@ -161,6 +162,9 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
         console.error(`Failed to disconnect from ${connection.deviceId}:`, error);
       }
     }
+    
+    // Clear the device list so scan populates it from scratch
+    clearDevices();
     
     // Wait a moment for disconnections to complete, then scan
     setTimeout(() => {
