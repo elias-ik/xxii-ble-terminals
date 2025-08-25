@@ -943,7 +943,7 @@ export const useBLEStore = create<BLEState>()(
               };
               let idx = indexOfDelim(buffer, searchFrom);
               while (idx !== -1) {
-                const msg = buffer.slice(0, idx);
+                const msg = buffer.slice(0, idx + delim.length);
                 messages.push(msg);
                 buffer = buffer.slice(idx + delim.length);
                 idx = indexOfDelim(buffer, 0);
