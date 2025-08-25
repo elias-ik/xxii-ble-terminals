@@ -497,6 +497,8 @@ export const selectors = {
     filtered: [] as Device[],
     sorted: [] as Device[]
   },
+  // Stable defaults cache for settings by deviceId to avoid referential churn
+  _defaultsCache: new Map<string, DeviceSettings>(),
   // Device Selectors
   getConnectedDevices: (state: BLEState) => 
     Object.values(state.devices).filter(device => device.connected),
@@ -594,17 +596,26 @@ export const selectors = {
     state.consoleBuffers[deviceId] || [],
     
   // Settings Selectors
-  getDeviceSettings: (state: BLEState, deviceId: string): DeviceSettings => 
-    state.deviceSettings[deviceId] || {
-      sendFormat: 'ASCII',
-      displayFormat: 'ASCII',
-      hexFillerPosition: 'end',
-      messageStart: '',
-      messageDelimiter: '',
-      splitFraming: false,
-      rxStart: '',
-      rxDelimiter: ''
-    },
+  getDeviceSettings: (state: BLEState, deviceId: string): DeviceSettings => {
+    const existing = state.deviceSettings[deviceId];
+    if (existing) return existing;
+    const cache = selectors._defaultsCache;
+    let cached = cache.get(deviceId);
+    if (!cached) {
+      cached = {
+        sendFormat: 'ASCII',
+        displayFormat: 'ASCII',
+        hexFillerPosition: 'end',
+        messageStart: '',
+        messageDelimiter: '',
+        splitFraming: false,
+        rxStart: '',
+        rxDelimiter: ''
+      };
+      cache.set(deviceId, cached);
+    }
+    return cached;
+  },
   
   // UI per Device selector
   getDeviceUI: (state: BLEState, deviceId: string) => {
