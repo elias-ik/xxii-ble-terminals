@@ -144,10 +144,37 @@ export const mockBLEClient: BLEClient = {
         { id: 'device-005', name: 'Smart Thermostat Delta', address: 'DE:AD:BE:EF:CA:FE', rssi: -38, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
         { id: 'device-006', name: 'Beacon Eta', address: '10:20:30:40:50:61', rssi: -80, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
         { id: 'device-007', name: 'UART Bridge Gamma', address: '12:34:56:78:9A:BC', rssi: -52, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
-        { id: 'device-008', name: 'Industrial Meter Theta', address: '10:20:30:40:50:62', rssi: -49, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const }
+        { id: 'device-008', name: 'Industrial Meter Theta', address: '10:20:30:40:50:62', rssi: -49, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-009', name: 'Smart Watch Omega', address: '11:22:33:44:55:66', rssi: -42, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-010', name: 'Blood Pressure Monitor', address: '22:33:44:55:66:77', rssi: -71, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-011', name: 'Glucose Meter Sigma', address: '33:44:55:66:77:88', rssi: -55, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-012', name: 'Smart Lock Lambda', address: '44:55:66:77:88:99', rssi: -63, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-013', name: 'Security Camera Pi', address: '55:66:77:88:99:AA', rssi: -48, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-014', name: 'Smart Speaker Rho', address: '66:77:88:99:AA:BB', rssi: -35, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-015', name: 'IoT Gateway Tau', address: '77:88:99:AA:BB:CC', rssi: -59, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-016', name: 'Smart Bulb Phi', address: '88:99:AA:BB:CC:DD', rssi: -66, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-017', name: 'Motion Sensor Chi', address: '99:AA:BB:CC:DD:EE', rssi: -73, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-018', name: 'Smart Plug Psi', address: 'AA:BB:CC:DD:EE:FF', rssi: -41, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-019', name: 'Weather Station Xi', address: 'BB:CC:DD:EE:FF:00', rssi: -69, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-020', name: 'Smart Scale Omicron', address: 'CC:DD:EE:FF:00:11', rssi: -51, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-021', name: 'Bluetooth Headphones', address: 'DD:EE:FF:00:11:22', rssi: -44, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-022', name: 'Wireless Mouse', address: 'EE:FF:00:11:22:33', rssi: -37, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-023', name: 'Keyboard Pro', address: 'FF:00:11:22:33:44', rssi: -33, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-024', name: 'Game Controller', address: '00:11:22:33:44:55', rssi: -46, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-025', name: 'Smart Mirror', address: '11:22:33:44:55:66', rssi: -68, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const }
       ];
-      devices.forEach((d, i) => setTimeout(() => emitter.emit('deviceDiscovered', d as any), i * 50));
-      setTimeout(() => emitter.emit('scanStatus', { status: 'completed', deviceCount: devices.length }), devices.length * 50 + 100);
+      
+      // Spread device discoveries over 30 seconds (30000ms)
+      const totalScanTime = 30000; // 30 seconds
+      const intervalBetweenDevices = totalScanTime / devices.length;
+      
+      devices.forEach((d, i) => {
+        const delay = i * intervalBetweenDevices;
+        setTimeout(() => emitter.emit('deviceDiscovered', d as any), delay);
+      });
+      
+      // Complete scan after all devices are discovered
+      setTimeout(() => emitter.emit('scanStatus', { status: 'completed', deviceCount: devices.length }), totalScanTime + 1000);
     }, 200);
   },
   async connect(deviceId: string) {
