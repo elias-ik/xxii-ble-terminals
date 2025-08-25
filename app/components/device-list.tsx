@@ -19,11 +19,24 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
   const searchQuery = useBLEStore((s) => s.searchQuery);
   const setSearchQuery = useBLEStore((s) => s.setSearchQuery);
   const scan = useBLEStore((s) => s.scan);
-  const getIsScanning = useBLEStore((s) => s.getIsScanning);
-  const sortedDevices = useBLEStore((s) => s.getSortedFilteredDevices());
+  const isScanning = useBLEStore((s) => s.scanStatus.status === 'scanning');
   const devices = useBLEStore((s) => s.devices);
 
-  const isScanning = getIsScanning();
+  const sortedDevices = useMemo(() => {
+    const all = devices ? Object.values(devices) : [];
+    const q = (searchQuery || '').trim().toLowerCase();
+    const filtered = q
+      ? all.filter((d: any) =>
+          (d.name || '').toLowerCase().includes(q) || (d.address || '').toLowerCase().includes(q)
+        )
+      : all;
+    const sorted = [...filtered].sort((a: any, b: any) => {
+      if (a.connected && !b.connected) return -1;
+      if (!a.connected && b.connected) return 1;
+      return (b.rssi ?? -999) - (a.rssi ?? -999);
+    });
+    return sorted as any[];
+  }, [devices, searchQuery]);
   const hasScanned = devices && Object.keys(devices).length > 0;
 
   const getStatusDotColor = (device: any) => {
