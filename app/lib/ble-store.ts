@@ -295,9 +295,13 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
     // Connection Management
     case 'CONNECTION_STARTED':
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connectionStatus: 'connecting'
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connectionStatus: 'connecting'
+          }
         };
       }
       break;
@@ -308,22 +312,30 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
         [action.payload.deviceId]: action.payload.connection
       };
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connected: true,
-          previouslyConnected: true,
-          connectionStatus: 'connected',
-          connectedAt: new Date()
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connected: true,
+            previouslyConnected: true,
+            connectionStatus: 'connected',
+            connectedAt: new Date()
+          }
         };
       }
       break;
       
     case 'CONNECTION_FAILED':
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connected: false,
-          connectionStatus: 'disconnected'
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connected: false,
+            connectionStatus: 'disconnected'
+          }
         };
       }
       break;
@@ -332,21 +344,29 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
       const { [action.payload.deviceId]: lostConnection, ...remainingConnections } = newState.connections;
       newState.connections = remainingConnections;
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connected: false,
-          previouslyConnected: true,
-          connectionStatus: 'lost',
-          connectionLostAt: new Date()
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connected: false,
+            previouslyConnected: true,
+            connectionStatus: 'lost',
+            connectionLostAt: new Date()
+          }
         };
       }
       break;
       
     case 'DISCONNECTION_STARTED':
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connectionStatus: 'disconnecting'
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connectionStatus: 'disconnecting'
+          }
         };
       }
       break;
@@ -355,21 +375,29 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
       const { [action.payload.deviceId]: disconnected, ...activeConnections } = newState.connections;
       newState.connections = activeConnections;
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connected: false,
-          previouslyConnected: true,
-          connectionStatus: 'disconnected',
-          connectionLostAt: new Date()
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connected: false,
+            previouslyConnected: true,
+            connectionStatus: 'disconnected',
+            connectionLostAt: new Date()
+          }
         };
       }
       break;
       
     case 'DISCONNECTION_FAILED':
       if (newState.devices[action.payload.deviceId]) {
-        newState.devices[action.payload.deviceId] = {
-          ...newState.devices[action.payload.deviceId],
-          connectionStatus: 'connected'
+        const prev = newState.devices[action.payload.deviceId];
+        newState.devices = {
+          ...newState.devices,
+          [action.payload.deviceId]: {
+            ...prev,
+            connectionStatus: 'connected'
+          }
         };
       }
       break;
