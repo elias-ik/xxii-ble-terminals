@@ -322,6 +322,7 @@ function bleReducer(state: Omit<BLEState, 'dispatch' | 'setupEventListeners' | '
       if (newState.devices[action.payload.deviceId]) {
         newState.devices[action.payload.deviceId] = {
           ...newState.devices[action.payload.deviceId],
+          connected: false,
           connectionStatus: 'disconnected'
         };
       }
