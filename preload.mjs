@@ -9,27 +9,7 @@ const __dirname = path.dirname(__filename);
 
 // Wrap everything in an async function to handle dynamic imports
 async function initializePreload() {
-  // Attempt to import BLE client (TypeScript). If it fails in preload, provide a no-op fallback
-  let bleClient;
-  try {
-    const mod = await import('./app/lib/ble/client.ts');
-    bleClient = mod.bleClient;
-  } catch (err) {
-    console.warn('Failed to import BLE client in preload, using no-op fallback:', err);
-    const noop = async () => {};
-    const noevent = () => {};
-    bleClient = {
-      on: noevent,
-      off: noevent,
-      scan: noop,
-      connect: noop,
-      disconnect: noop,
-      read: noop,
-      write: noop,
-      subscribe: noop,
-      unsubscribe: noop,
-    };
-  }
+  // BLE is handled in main; preload only forwards IPC to renderer
 
   // Storage via IPC to main process (no direct electron-store usage in preload)
 
@@ -38,6 +18,7 @@ async function initializePreload() {
     const maps = {
       scanStatus: new Map(),
       deviceDiscovered: new Map(),
+      devicesDiscovered: new Map(),
       deviceUpdated: new Map(),
       connectionChanged: new Map(),
       characteristicValue: new Map(),
@@ -46,83 +27,95 @@ async function initializePreload() {
 
     return {
       onScanStatus(cb) {
-        const handler = (payload) => cb({ status: payload.status, deviceCount: payload.deviceCount, error: payload.error });
+        const handler = (_event, payload) => cb({ status: payload.status, deviceCount: payload.deviceCount, error: payload.error });
         maps.scanStatus.set(cb, handler);
-        bleClient.on('scanStatus', handler);
+        ipcRenderer.on('ble:scanStatus', handler);
       },
       removeScanStatusListener(cb) {
         const handler = maps.scanStatus.get(cb);
         if (handler) {
-          bleClient.off('scanStatus', handler);
+          ipcRenderer.removeListener('ble:scanStatus', handler);
           maps.scanStatus.delete(cb);
         }
       },
 
       onDeviceDiscovered(cb) {
-        const handler = (device) => cb({ device });
+        const handler = (_event, device) => cb({ device });
         maps.deviceDiscovered.set(cb, handler);
-        bleClient.on('deviceDiscovered', handler);
+        ipcRenderer.on('ble:deviceDiscovered', handler);
       },
       removeDeviceDiscoveredListener(cb) {
         const handler = maps.deviceDiscovered.get(cb);
         if (handler) {
-          bleClient.off('deviceDiscovered', handler);
+          ipcRenderer.removeListener('ble:deviceDiscovered', handler);
           maps.deviceDiscovered.delete(cb);
         }
       },
 
+      onDevicesDiscovered(cb) {
+        const handler = (_event, devices) => cb({ devices });
+        maps.devicesDiscovered.set(cb, handler);
+        ipcRenderer.on('ble:devicesDiscovered', handler);
+      },
+      removeDevicesDiscoveredListener(cb) {
+        const handler = maps.devicesDiscovered.get(cb);
+        if (handler) {
+          ipcRenderer.removeListener('ble:devicesDiscovered', handler);
+          maps.devicesDiscovered.delete(cb);
+        }
+      },
+
       onDeviceUpdated(cb) {
-        const handler = (device) => cb({ device });
+        const handler = (_event, device) => cb({ device });
         maps.deviceUpdated.set(cb, handler);
-        bleClient.on('deviceUpdated', handler);
+        ipcRenderer.on('ble:deviceUpdated', handler);
       },
       removeDeviceUpdatedListener(cb) {
         const handler = maps.deviceUpdated.get(cb);
         if (handler) {
-          bleClient.off('deviceUpdated', handler);
+          ipcRenderer.removeListener('ble:deviceUpdated', handler);
           maps.deviceUpdated.delete(cb);
         }
       },
 
       onConnectionChanged(cb) {
-        const handler = (evt) => {
-          // Map state -> status expected by renderer types
+        const handler = (_event, evt) => {
           let status = evt.state;
           cb({ deviceId: evt.deviceId, status, connection: evt.connection });
         };
         maps.connectionChanged.set(cb, handler);
-        bleClient.on('connectionChanged', handler);
+        ipcRenderer.on('ble:connectionChanged', handler);
       },
       removeConnectionChangedListener(cb) {
         const handler = maps.connectionChanged.get(cb);
         if (handler) {
-          bleClient.off('connectionChanged', handler);
+          ipcRenderer.removeListener('ble:connectionChanged', handler);
           maps.connectionChanged.delete(cb);
         }
       },
 
       onCharacteristicValue(cb) {
-        const handler = (evt) => cb({ ...evt, timestamp: new Date() });
+        const handler = (_event, evt) => cb({ ...evt, timestamp: new Date() });
         maps.characteristicValue.set(cb, handler);
-        bleClient.on('characteristicValue', handler);
+        ipcRenderer.on('ble:characteristicValue', handler);
       },
       removeCharacteristicValueListener(cb) {
         const handler = maps.characteristicValue.get(cb);
         if (handler) {
-          bleClient.off('characteristicValue', handler);
+          ipcRenderer.removeListener('ble:characteristicValue', handler);
           maps.characteristicValue.delete(cb);
         }
       },
 
       onSubscriptionChanged(cb) {
-        const handler = (evt) => cb(evt);
+        const handler = (_event, evt) => cb(evt);
         maps.subscriptionChanged.set(cb, handler);
-        bleClient.on('subscriptionChanged', handler);
+        ipcRenderer.on('ble:subscriptionChanged', handler);
       },
       removeSubscriptionChangedListener(cb) {
         const handler = maps.subscriptionChanged.get(cb);
         if (handler) {
-          bleClient.off('subscriptionChanged', handler);
+          ipcRenderer.removeListener('ble:subscriptionChanged', handler);
           maps.subscriptionChanged.delete(cb);
         }
       },
@@ -131,15 +124,15 @@ async function initializePreload() {
 
   const relay = createEventRelay();
 
-  // Expose BLE API to renderer via context bridge
+  // Expose BLE API to renderer via context bridge (IPC to main)
   contextBridge.exposeInMainWorld('bleAPI', {
-    scan: () => bleClient.scan(),
-    connect: (deviceId) => bleClient.connect(deviceId),
-    disconnect: (deviceId) => bleClient.disconnect(deviceId),
-    read: (deviceId, serviceId, characteristicId) => bleClient.read(deviceId, serviceId, characteristicId),
-    write: (deviceId, serviceId, characteristicId, data) => bleClient.write(deviceId, serviceId, characteristicId, data),
-    subscribe: (deviceId, serviceId, characteristicId, _cb) => bleClient.subscribe(deviceId, serviceId, characteristicId),
-    unsubscribe: (deviceId, serviceId, characteristicId) => bleClient.unsubscribe(deviceId, serviceId, characteristicId),
+    scan: () => ipcRenderer.invoke('ble:scan'),
+    connect: (deviceId) => ipcRenderer.invoke('ble:connect', deviceId),
+    disconnect: (deviceId) => ipcRenderer.invoke('ble:disconnect', deviceId),
+    read: (deviceId, serviceId, characteristicId) => ipcRenderer.invoke('ble:read', deviceId, serviceId, characteristicId),
+    write: (deviceId, serviceId, characteristicId, data) => ipcRenderer.invoke('ble:write', deviceId, serviceId, characteristicId, data),
+    subscribe: (deviceId, serviceId, characteristicId, _cb) => ipcRenderer.invoke('ble:subscribe', deviceId, serviceId, characteristicId),
+    unsubscribe: (deviceId, serviceId, characteristicId) => ipcRenderer.invoke('ble:unsubscribe', deviceId, serviceId, characteristicId),
 
     getRSSI: () => null,
     getAdvertisingData: () => null,
@@ -148,6 +141,7 @@ async function initializePreload() {
     isConnected: () => false,
 
     onDeviceDiscovered: relay.onDeviceDiscovered,
+    onDevicesDiscovered: relay.onDevicesDiscovered,
     onDeviceUpdated: relay.onDeviceUpdated,
     onConnectionChanged: relay.onConnectionChanged,
     onCharacteristicValue: relay.onCharacteristicValue,
@@ -155,6 +149,7 @@ async function initializePreload() {
     onScanStatus: relay.onScanStatus,
 
     removeDeviceDiscoveredListener: relay.removeDeviceDiscoveredListener,
+    removeDevicesDiscoveredListener: relay.removeDevicesDiscoveredListener,
     removeDeviceUpdatedListener: relay.removeDeviceUpdatedListener,
     removeConnectionChangedListener: relay.removeConnectionChangedListener,
     removeCharacteristicValueListener: relay.removeCharacteristicValueListener,
