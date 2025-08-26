@@ -254,7 +254,39 @@ function registerIpcHandlers() {
         } catch {}
         svcMap[svc.uuid] = { uuid: svc.uuid, name: getDisplayUuid(svc.uuid), characteristics: chMap };
       }
-      bleState.activeConnections.set(device.id || deviceId, { device, server, services: nativeServices, characteristics: nativeChars, uiServices: svcMap });
+      // Set up disconnection monitoring for this device
+      const handleDisconnection = async () => {
+        console.log('[BLE] Device disconnected unexpectedly:', deviceId);
+        // Clean up the connection state
+        bleState.activeConnections.delete(deviceId);
+        // Clear any subscriptions for this device
+        for (const k of Array.from(bleState.subscriptions.keys())) {
+          if (k.startsWith(`${deviceId}|`)) {
+            try { 
+              const stop = bleState.subscriptions.get(k); 
+              stop && (await stop()); 
+            } catch {}
+            bleState.subscriptions.delete(k);
+          }
+        }
+        // Notify the renderer about the disconnection
+        broadcast('ble:connectionChanged', { deviceId, state: 'lost' });
+      };
+
+      // Listen for disconnection events
+      if (server.addEventListener) {
+        server.addEventListener('gattserverdisconnected', handleDisconnection);
+      }
+
+      bleState.activeConnections.set(device.id || deviceId, { 
+        device, 
+        server, 
+        services: nativeServices, 
+        characteristics: nativeChars, 
+        uiServices: svcMap,
+        disconnectHandler: handleDisconnection // Store the handler for cleanup
+      });
+      
       const connection = { deviceId: device.id || deviceId, connected: true, services: svcMap, connectedAt: new Date() };
       broadcast('ble:connectionChanged', { deviceId: device.id || deviceId, state: 'connected', connection });
     } catch (error) {
@@ -269,6 +301,10 @@ function registerIpcHandlers() {
       const meta = bleState.activeConnections.get(deviceId);
       if (meta?.server?.connected) {
         try { meta.server.disconnect(); } catch {}
+      }
+      // Remove the disconnection event listener
+      if (meta?.disconnectHandler && meta?.server?.removeEventListener) {
+        meta.server.removeEventListener('gattserverdisconnected', meta.disconnectHandler);
       }
       for (const k of Array.from(bleState.subscriptions.keys())) {
         if (k.startsWith(`${deviceId}|`)) {

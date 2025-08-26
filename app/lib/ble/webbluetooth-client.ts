@@ -279,13 +279,38 @@ export const webBluetoothClient: BLEClient = {
         svcMap[svc.uuid] = { uuid: svc.uuid, name: getDisplayUuid(svc.uuid), characteristics: chMap } as Service;
       }
 
+      // Set up disconnection monitoring for this device
+      const handleDisconnection = () => {
+        console.log('[WebBLE] Device disconnected unexpectedly:', deviceId);
+        // Clean up the connection state
+        activeConnections.delete(deviceId);
+        // Clear any subscriptions for this device
+        for (const k of Array.from(subscriptions.keys())) {
+          if (k.startsWith(`${deviceId}|`)) {
+            try { 
+              const stop = subscriptions.get(k); 
+              if (stop) stop(); 
+            } catch {}
+            subscriptions.delete(k);
+          }
+        }
+        // Notify the renderer about the disconnection
+        emitter.emit('connectionChanged', { deviceId, state: 'lost' });
+      };
+
+      // Listen for disconnection events
+      if (server.addEventListener) {
+        server.addEventListener('gattserverdisconnected', handleDisconnection);
+      }
+
       activeConnections.set(device.id || deviceId, {
         device,
         server,
         services: nativeServices,
         characteristics: nativeChars,
         uiServices: svcMap,
-      });
+        disconnectHandler: handleDisconnection // Store the handler for cleanup
+      } as any);
       try {
         log.info('connect(): cache summary', {
           services: Object.keys(svcMap).length,
@@ -311,6 +336,10 @@ export const webBluetoothClient: BLEClient = {
       const meta = activeConnections.get(deviceId);
       if (meta?.server?.connected) {
         try { meta.server.disconnect(); } catch {}
+      }
+      // Remove the disconnection event listener
+      if ((meta as any)?.disconnectHandler && meta?.server?.removeEventListener) {
+        meta.server.removeEventListener('gattserverdisconnected', (meta as any).disconnectHandler);
       }
       // Clear cached subscriptions for this device
       for (const k of Array.from(subscriptions.keys())) {

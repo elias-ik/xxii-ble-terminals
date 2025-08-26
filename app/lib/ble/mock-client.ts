@@ -219,11 +219,32 @@ export const mockBLEClient: BLEClient = {
       };
       mockConnections[deviceId] = connection;
       emitter.emit('connectionChanged', { deviceId, state: 'connected', connection });
+      
+      // Set up periodic connection health check for mock client
+      const healthCheckInterval = setInterval(() => {
+        // Simulate random disconnections (very low probability for testing)
+        if (Math.random() < 0.001) { // 0.1% chance per check
+          console.log('[Mock] Simulating unexpected disconnection for device:', deviceId);
+          clearInterval(healthCheckInterval);
+          delete mockConnections[deviceId];
+          emitter.emit('connectionChanged', { deviceId, state: 'lost' });
+        }
+      }, 10000); // Check every 10 seconds
+      
+      // Store the interval for cleanup
+      (window as any).__mockHealthChecks = (window as any).__mockHealthChecks || {};
+      (window as any).__mockHealthChecks[deviceId] = healthCheckInterval;
     }, 400);
   },
   async disconnect(deviceId: string) {
     emitter.emit('connectionChanged', { deviceId, state: 'disconnecting' });
     setTimeout(() => {
+      // Clear health check interval
+      const healthChecks = (window as any).__mockHealthChecks || {};
+      if (healthChecks[deviceId]) {
+        clearInterval(healthChecks[deviceId]);
+        delete healthChecks[deviceId];
+      }
       delete mockConnections[deviceId];
       emitter.emit('connectionChanged', { deviceId, state: 'disconnected' });
     }, 200);
