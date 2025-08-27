@@ -130,6 +130,23 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   },
   { type: 'move', id: 'move-to-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 1200 },
   { type: 'click', id: 'click-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 800 },
+
+  // Step 8: In the dialog, click read on Manufacturer Name and Model Number
+  {
+    type: 'while',
+    id: 'wait-for-services-dialog',
+    whileCondition: () => {
+      const dlg = document.querySelector('[role="dialog"]');
+      return !dlg;
+    },
+    whileActions: [
+      { type: 'do-nothing', delay: 100 },
+    ]
+  },
+  { type: 'move', id: 'move-to-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 800 },
+  { type: 'click', id: 'click-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 400 },
+  { type: 'move', id: 'move-to-read-model', target: '[data-testid="read-model-number"]', delay: 800 },
+  { type: 'click', id: 'click-read-model', target: '[data-testid="read-model-number"]', delay: 400 },
   
   // Room for more actions...
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },

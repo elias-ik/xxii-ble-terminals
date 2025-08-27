@@ -403,6 +403,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                     if (wasSelected) next.delete(key); else next.add(key);
                                     setDeviceUI(deviceId, { selectedReadKeys: Array.from(next) as string[] });
                                   }}
+                                  data-testid={ch.name === 'Manufacturer Name' ? 'read-manufacturer-name' : (ch.name === 'Model Number' ? 'read-model-number' : undefined)}
                                 >
                                   read
                                 </Badge>
