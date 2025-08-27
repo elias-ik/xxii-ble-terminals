@@ -115,7 +115,19 @@ const DEFAULT_ACTIONS: MouseAction[] = [
     ]
   },
 
-  // Step 7: Click Edit on Active Characteristics (exists in two possible places)
+  // Step 7: Wait for Edit button to appear, then click (supports both locations)
+  {
+    type: 'while',
+    id: 'wait-for-edit-button-to-appear',
+    whileCondition: () => {
+      const btn = document.querySelector('[data-testid="edit-active-characteristics-button"]') as HTMLElement | null;
+      const isVisible = !!(btn && btn.offsetParent !== null);
+      return !isVisible; // keep waiting while not visible
+    },
+    whileActions: [
+      { type: 'do-nothing', delay: 100 },
+    ]
+  },
   { type: 'move', id: 'move-to-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 1200 },
   { type: 'click', id: 'click-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 800 },
   
