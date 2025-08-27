@@ -22,21 +22,21 @@ export function MouseCursor({ position, visible, className }: MouseCursorProps) 
     <div
       ref={cursorRef}
       className={cn(
-        "fixed top-0 left-0 w-6 h-6 pointer-events-none z-[9999] transition-transform duration-75 ease-out",
+        "fixed top-0 left-0 w-18 h-18 pointer-events-none z-[9999] transition-transform duration-75 ease-out",
         className
       )}
       style={{
-        transform: `translate(${position.x - 12}px, ${position.y - 12}px)`,
+        transform: `translate(${position.x - 36}px, ${position.y - 36}px)`,
       }}
     >
       {/* Cursor pointer */}
-      <div className="w-0 h-0 border-l-[8px] border-l-foreground border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent" />
+      <div className="w-0 h-0 border-l-[24px] border-l-foreground border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent" />
       
       {/* Cursor shadow */}
-      <div className="absolute top-[1px] left-[1px] w-0 h-0 border-l-[8px] border-l-muted-foreground/50 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent" />
+      <div className="absolute top-[3px] left-[3px] w-0 h-0 border-l-[24px] border-l-muted-foreground/50 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent" />
       
       {/* Click indicator */}
-      <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-primary rounded-full opacity-0 animate-ping" />
+      <div className="absolute top-1/2 left-1/2 w-6 h-6 bg-primary rounded-full opacity-0 animate-ping" />
     </div>
   );
 }

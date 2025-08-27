@@ -92,22 +92,24 @@ export function useMouseSimulation() {
   const [userControlStatus, setUserControlStatus] = useState<UserControlStatus>('demo');
   
   const cursorRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>();
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const animationRef = useRef<number | undefined>(undefined);
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const hasStartedRef = useRef<boolean>(false);
   const isActiveRef = useRef<boolean>(false);
   const currentActionIndexRef = useRef<number>(0);
-  
+  const stopRef = useRef<() => void>(() => {});
+  const currentPositionRef = useRef<MousePosition>({ x: 0, y: 0 });
+
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
-  
+
   // Speed multipliers
   const speedMultipliers = {
     slow: 2.0,
     normal: 1.0,
     fast: 0.5,
   };
-  
+
   // Find element by test ID or selector
   const findElement = useCallback((target: string): HTMLElement | null => {
     if (target.startsWith('[data-testid=')) {
@@ -115,7 +117,7 @@ export function useMouseSimulation() {
     }
     return document.querySelector(target) as HTMLElement;
   }, []);
-  
+
   // Get element position
   const getElementPosition = useCallback((element: HTMLElement): MousePosition => {
     const rect = element.getBoundingClientRect();
@@ -124,7 +126,7 @@ export function useMouseSimulation() {
       y: rect.top + rect.height / 2,
     };
   }, []);
-  
+
   // Animate mouse movement
   const animateMouseMove = useCallback((from: MousePosition, to: MousePosition, duration: number) => {
     const startTime = performance.now();
@@ -143,7 +145,9 @@ export function useMouseSimulation() {
       const x = startX + deltaX * easeProgress;
       const y = startY + deltaY * easeProgress;
       
-      setCurrentPosition({ x, y });
+      const newPosition = { x, y };
+      setCurrentPosition(newPosition);
+      currentPositionRef.current = newPosition;
       
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
@@ -152,7 +156,7 @@ export function useMouseSimulation() {
     
     animationRef.current = requestAnimationFrame(animate);
   }, []);
-  
+
   // Execute a mouse action
   const executeAction = useCallback(async (action: MouseAction) => {
     const baseDelay = action.delay || 1000;
@@ -173,15 +177,13 @@ export function useMouseSimulation() {
           if (element) {
             const targetPos = getElementPosition(element);
             console.log(`🖱️ Demo: Moving to element "${action.target}" at position (${targetPos.x}, ${targetPos.y})`);
-            animateMouseMove(currentPosition, targetPos, actualDelay);
-            setCurrentPosition(targetPos);
+            animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
           } else {
             console.warn(`⚠️ Demo: Element not found for target "${action.target}"`);
           }
         } else if (action.position) {
           console.log(`🖱️ Demo: Moving to absolute position (${action.position.x}, ${action.position.y})`);
-          animateMouseMove(currentPosition, action.position, actualDelay);
-          setCurrentPosition(action.position);
+          animateMouseMove(currentPositionRef.current, action.position, actualDelay);
         }
         break;
         
@@ -190,8 +192,10 @@ export function useMouseSimulation() {
           const element = findElement(action.target);
           if (element) {
             const targetPos = getElementPosition(element);
-            setCurrentPosition(targetPos);
             console.log(`👆 Demo: Clicking element "${action.target}" at (${targetPos.x}, ${targetPos.y})`);
+            
+            // Move to position first, then click
+            animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
             
             // Simulate click after movement
             setTimeout(() => {
@@ -209,8 +213,10 @@ export function useMouseSimulation() {
           const element = findElement(action.target) as HTMLInputElement;
           if (element) {
             const targetPos = getElementPosition(element);
-            setCurrentPosition(targetPos);
             console.log(`⌨️ Demo: Typing "${action.text}" into "${action.target}" at (${targetPos.x}, ${targetPos.y})`);
+            
+            // Move to position first, then type
+            animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
             
             setTimeout(() => {
               console.log(`✅ Demo: Executing type "${action.text}" into "${action.target}"`);
@@ -229,7 +235,7 @@ export function useMouseSimulation() {
         // Implement scroll simulation if needed
         break;
     }
-  }, [currentPosition, config.speed, findElement, getElementPosition, animateMouseMove]);
+  }, [config.speed, findElement, getElementPosition, animateMouseMove]);
   
   // Run next action - using refs to avoid closure issues
   const runNextAction = useCallback(() => {
@@ -250,7 +256,7 @@ export function useMouseSimulation() {
         setCurrentActionIndex(0);
       } else {
         console.log(`🏁 Demo: Simulation completed (no loop)`);
-        stopSimulation();
+        stopRef.current();
         return;
       }
     }
@@ -265,7 +271,7 @@ export function useMouseSimulation() {
       setCurrentActionIndex(currentActionIndexRef.current);
       runNextAction();
     }, delay);
-  }, [userControlStatus, config.actions, config.loop, executeAction, speedMultipliers, config.speed, stopSimulation]);
+  }, [userControlStatus, config.actions, config.loop, executeAction, config.speed]);
 
   // Start the simulation
   const startSimulation = useCallback(() => {
@@ -315,6 +321,16 @@ export function useMouseSimulation() {
       console.log(`⏰ Demo: Cleared timeout`);
     }
   }, []);
+
+  // Keep stopRef in sync to avoid TDZ issues when referenced above
+  useEffect(() => {
+    stopRef.current = stopSimulation;
+  }, [stopSimulation]);
+
+  // Keep currentPositionRef in sync with currentPosition state
+  useEffect(() => {
+    currentPositionRef.current = currentPosition;
+  }, [currentPosition]);
   
   // Handle postMessage events from parent window
   const handlePostMessage = useCallback((event: MessageEvent) => {
