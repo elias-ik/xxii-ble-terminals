@@ -90,7 +90,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'click', id: 'click-connect', target: '[data-testid="connect-button"]', delay: 3000 },
   
   // Room for more actions...
-  { type: 'move', id: 'final-pause', position: { x: 400, y: 400 }, delay: 2000 },
+  { type: 'do-nothing', id: 'final-pause', delay: 2000 },
 ];
 
 export function useMouseSimulation() {
