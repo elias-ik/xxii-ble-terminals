@@ -296,6 +296,13 @@ export function useMouseSimulation() {
         } else if (action.position) {
           animateMouseMove(currentPositionRef.current, action.position, actualDelay);
         }
+        
+        // Add 5 second delay for debugging
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 5000);
+        });
         break;
         
       case 'click':
