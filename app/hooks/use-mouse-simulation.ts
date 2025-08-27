@@ -271,28 +271,14 @@ export function useMouseSimulation() {
         
       case 'while':
         if (action.whileCondition && action.whileActions) {
-          let iterationCount = 0;
-          const maxIterations = 100; // Prevent infinite loops
-          
-          while (isActiveRef.current && !isUserControlRef.current && action.whileCondition() && iterationCount < maxIterations) {
-            iterationCount++;
-            
+          while (isActiveRef.current && !isUserControlRef.current && action.whileCondition()) {
             // Execute all actions in the while loop
             for (let i = 0; i < action.whileActions.length; i++) {
               const whileAction = action.whileActions[i];
-              
               // Execute the while action directly (it handles its own delays)
               await executeAction(whileAction);
             }
-            
-            // Check condition again after executing all actions
-            if (!isActiveRef.current || isUserControlRef.current || !action.whileCondition()) {
-              break;
-            }
-          }
-          
-          if (iterationCount >= maxIterations) {
-            console.warn(`⚠️ Demo: While loop reached maximum iterations (${maxIterations}), stopping`);
+            // Re-evaluate guards and condition; loop will exit naturally if any becomes false
           }
         } else {
           console.warn(`⚠️ Demo: While action has no condition or actions`);
