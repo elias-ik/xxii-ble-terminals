@@ -397,6 +397,19 @@ export function useMouseSimulation() {
     });
   }, []);
 
+  // Set input value in a way React reliably detects (uses native setter)
+  const setReactInputValue = useCallback((input: HTMLInputElement, value: string) => {
+    const proto = Object.getPrototypeOf(input);
+    const valueSetter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (valueSetter) {
+      valueSetter.call(input, value);
+    } else {
+      // Fallback
+      (input as any).value = value;
+    }
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }, []);
+
   // Helper: cancellable sleep that is cleared on stop
   const safeSleep = useCallback(async (ms: number) => {
     if (ms <= 0) ms = 1; // ensure a macrotask yield
@@ -524,10 +537,7 @@ export function useMouseSimulation() {
             }
             
             element.focus();
-            element.value = action.text!;
-            // Notify React of programmatic value change
-            element.dispatchEvent(new Event('input', { bubbles: true }));
-            element.dispatchEvent(new Event('change', { bubbles: true }));
+            setReactInputValue(element, action.text!);
           } else {
             console.warn(`⚠️ Demo: Element not found for type target "${action.target}"`);
           }
