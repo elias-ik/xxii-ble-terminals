@@ -224,15 +224,9 @@ export function useMouseSimulation() {
             // Execute all actions in the while loop
             for (let i = 0; i < action.whileActions.length; i++) {
               const whileAction = action.whileActions[i];
-              const whileDelay = (whileAction.delay || 1000) * speedMultipliers[config.speed];
               
-              // Execute the while action
-              await new Promise<void>((resolve) => {
-                setTimeout(async () => {
-                  await executeAction(whileAction);
-                  resolve();
-                }, whileDelay);
-              });
+              // Execute the while action directly (it handles its own delays)
+              await executeAction(whileAction);
             }
             
             // Check condition again after executing all actions
@@ -267,15 +261,9 @@ export function useMouseSimulation() {
             // Execute all actions in the conditional branch
             for (let i = 0; i < actionsToExecute.length; i++) {
               const conditionalAction = actionsToExecute[i];
-              const conditionalDelay = (conditionalAction.delay || 1000) * speedMultipliers[config.speed];
               
-              // Execute the conditional action
-              await new Promise<void>((resolve) => {
-                setTimeout(async () => {
-                  await executeAction(conditionalAction);
-                  resolve();
-                }, conditionalDelay);
-              });
+              // Execute the conditional action directly (it handles its own delays)
+              await executeAction(conditionalAction);
             }
           }
         } else {
@@ -289,16 +277,18 @@ export function useMouseSimulation() {
           if (element) {
             const targetPos = getElementPosition(element);
             await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+          } else {
+            console.warn(`⚠️ Demo: Element not found for target "${action.target}"`);
           }
         } else if (action.position) {
           await animateMouseMove(currentPositionRef.current, action.position, actualDelay);
         }
         
-        // Wait for animation to complete, then add 5 second delay for debugging
+        // Add 5 second delay for debugging (after animation completes)
         await new Promise<void>((resolve) => {
           setTimeout(() => {
             resolve();
-          }, actualDelay + 5000);
+          }, 5000);
         });
         break;
         
@@ -318,6 +308,8 @@ export function useMouseSimulation() {
                 resolve();
               }, actualDelay);
             });
+          } else {
+            console.warn(`⚠️ Demo: Element not found for click target "${action.target}"`);
           }
         }
         break;
@@ -339,6 +331,8 @@ export function useMouseSimulation() {
                 resolve();
               }, actualDelay);
             });
+          } else {
+            console.warn(`⚠️ Demo: Element not found for type target "${action.target}"`);
           }
         }
         break;
