@@ -8,11 +8,14 @@ export interface MousePosition {
 }
 
 export interface MouseAction {
-  type: 'move' | 'click' | 'type' | 'scroll';
+  type: 'move' | 'click' | 'type' | 'scroll' | 'conditional';
   target?: string;
   position?: MousePosition;
   text?: string;
   delay?: number;
+  condition?: () => boolean;
+  actionsIfTrue?: MouseAction[];
+  actionsIfFalse?: MouseAction[];
 }
 
 export interface MouseSimulationConfig {
@@ -29,52 +32,67 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Initial pause to let the page load
   { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
   
-  // Step 1: Start scanning for devices
+  // Step 1: If connected to any devices, select the device, then disconnect
+  {
+    type: 'conditional',
+    condition: () => {
+      const disconnectButton = document.querySelector('[data-testid="disconnect-button"]');
+      return !!(disconnectButton && disconnectButton instanceof HTMLElement && disconnectButton.offsetParent !== null);
+    },
+    actionsIfTrue: [
+      { type: 'move', target: '[data-testid="device-row"]', delay: 1500 },
+      { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
+      { type: 'move', target: '[data-testid="disconnect-button"]', delay: 1500 },
+      { type: 'click', target: '[data-testid="disconnect-button"]', delay: 2000 },
+    ],
+    actionsIfFalse: [
+      { type: 'move', position: { x: 150, y: 150 }, delay: 500 },
+    ]
+  },
+  
+  // Step 2: If scanning is running, wait for scanning to be over
+  {
+    type: 'conditional',
+    condition: () => {
+      const scanButton = document.querySelector('[data-testid="scan-button"]');
+      return !!(scanButton && scanButton instanceof HTMLElement && 
+             (scanButton.textContent?.includes('Stop') || scanButton.textContent?.includes('Scanning')));
+    },
+    actionsIfTrue: [
+      { type: 'move', position: { x: 200, y: 200 }, delay: 3000 },
+    ],
+    actionsIfFalse: [
+      { type: 'move', position: { x: 200, y: 200 }, delay: 500 },
+    ]
+  },
+  
+  // Step 3: Click rescan
   { type: 'move', target: '[data-testid="scan-button"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="scan-button"]', delay: 3000 },
+  { type: 'click', target: '[data-testid="scan-button"]', delay: 2000 },
   
-  // Step 2: Wait for devices to appear and select the first one
-  { type: 'move', target: '[data-testid="device-row"]', delay: 4000 },
-  { type: 'click', target: '[data-testid="device-row"]', delay: 2000 },
+  // Step 4: Wait 1000ms
+  { type: 'move', position: { x: 300, y: 300 }, delay: 1000 },
   
-  // Step 3: Connect to the selected device
-  { type: 'move', target: '[data-testid="connect-button"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="connect-button"]', delay: 3000 },
+  // Step 5: Connect to a device (only if devices are available)
+  {
+    type: 'conditional',
+    condition: () => {
+      const deviceRows = document.querySelectorAll('[data-testid="device-row"]');
+      return deviceRows.length > 0;
+    },
+    actionsIfTrue: [
+      { type: 'move', target: '[data-testid="device-row"]', delay: 2000 },
+      { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
+      { type: 'move', target: '[data-testid="connect-button"]', delay: 1500 },
+      { type: 'click', target: '[data-testid="connect-button"]', delay: 3000 },
+    ],
+    actionsIfFalse: [
+      { type: 'move', position: { x: 350, y: 350 }, delay: 2000 },
+    ]
+  },
   
-  // Step 4: Send first command - AT+VERSION
-  { type: 'move', target: '[data-testid="terminal-input"]', delay: 2000 },
-  { type: 'click', target: '[data-testid="terminal-input"]', delay: 1000 },
-  { type: 'type', text: 'AT+VERSION', delay: 2000 },
-  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
-  
-  // Step 5: Send second command - AT+STATUS
-  { type: 'type', text: 'AT+STATUS', delay: 2000 },
-  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
-  
-  // Step 6: Send third command - AT+INFO
-  { type: 'type', text: 'AT+INFO', delay: 2000 },
-  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
-  
-  // Step 7: Subscribe to notifications (click on a notify badge)
-  { type: 'move', target: '[data-testid="subscribe-button"]', delay: 2000 },
-  { type: 'click', target: '[data-testid="subscribe-button"]', delay: 3000 },
-  
-  // Step 8: Clear the console
-  { type: 'move', target: '[data-testid="clear-console-button"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="clear-console-button"]', delay: 2000 },
-  
-  // Step 9: Send one more command after clearing
-  { type: 'move', target: '[data-testid="terminal-input"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="terminal-input"]', delay: 1000 },
-  { type: 'type', text: 'HELLO WORLD', delay: 2000 },
-  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
-  
-  // Step 10: Disconnect from the device
-  { type: 'move', target: '[data-testid="disconnect-button"]', delay: 2000 },
-  { type: 'click', target: '[data-testid="disconnect-button"]', delay: 3000 },
-  
-  // Final pause before restarting
-  { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
+  // Room for more actions...
+  { type: 'move', position: { x: 400, y: 400 }, delay: 2000 },
 ];
 
 export function useMouseSimulation() {
@@ -102,6 +120,23 @@ export function useMouseSimulation() {
 
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
+
+  // Helper functions to check current state
+  const isConnected = useCallback(() => {
+    const disconnectButton = document.querySelector('[data-testid="disconnect-button"]');
+    return !!(disconnectButton && disconnectButton instanceof HTMLElement && disconnectButton.offsetParent !== null);
+  }, []);
+
+  const isScanning = useCallback(() => {
+    const scanButton = document.querySelector('[data-testid="scan-button"]');
+    return !!(scanButton && scanButton instanceof HTMLElement && 
+           (scanButton.textContent?.includes('Stop') || scanButton.textContent?.includes('Scanning')));
+  }, []);
+
+  const hasDevices = useCallback(() => {
+    const deviceRows = document.querySelectorAll('[data-testid="device-row"]');
+    return deviceRows.length > 0;
+  }, []);
 
   // Speed multipliers
   const speedMultipliers = {
@@ -171,6 +206,36 @@ export function useMouseSimulation() {
     });
     
     switch (action.type) {
+      case 'conditional':
+        if (action.condition) {
+          const conditionResult = action.condition();
+          console.log(`🔀 Demo: Conditional check result: ${conditionResult}`);
+          
+          const actionsToExecute = conditionResult ? action.actionsIfTrue : action.actionsIfFalse;
+          if (actionsToExecute && actionsToExecute.length > 0) {
+            console.log(`📋 Demo: Executing ${actionsToExecute.length} conditional actions (${conditionResult ? 'true' : 'false'} branch)`);
+            
+            // Execute all actions in the conditional branch
+            for (let i = 0; i < actionsToExecute.length; i++) {
+              const conditionalAction = actionsToExecute[i];
+              const conditionalDelay = (conditionalAction.delay || 1000) * speedMultipliers[config.speed];
+              
+              // Execute the conditional action
+              await new Promise<void>((resolve) => {
+                setTimeout(async () => {
+                  await executeAction(conditionalAction);
+                  resolve();
+                }, conditionalDelay);
+              });
+            }
+          } else {
+            console.log(`⚠️ Demo: No actions defined for ${conditionResult ? 'true' : 'false'} branch`);
+          }
+        } else {
+          console.warn(`⚠️ Demo: Conditional action has no condition function`);
+        }
+        break;
+        
       case 'move':
         if (action.target) {
           const element = findElement(action.target);
