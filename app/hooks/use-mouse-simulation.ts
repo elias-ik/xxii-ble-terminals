@@ -9,6 +9,7 @@ export interface MousePosition {
 
 export interface MouseAction {
   type: 'move' | 'click' | 'type' | 'scroll' | 'conditional' | 'while' | 'do-nothing';
+  id?: string;
   target?: string;
   position?: MousePosition;
   text?: string;
@@ -32,11 +33,12 @@ export type UserControlStatus = 'demo' | 'user';
 
 const DEFAULT_ACTIONS: MouseAction[] = [
   // Initial pause to let the page load
-  { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
+  { type: 'move', id: 'initial-pause', position: { x: 100, y: 100 }, delay: 2000 },
   
   // Step 1: Wait for scanning to be finished using while loop
   {
     type: 'while',
+    id: 'wait-for-scanning-to-finish',
     whileCondition: () => {
       const scanButton = document.querySelector('[data-testid="scan-button"]');
       return !!(scanButton && scanButton instanceof HTMLElement && 
@@ -50,6 +52,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Step 2: Wait until the rescan button is clickable again using while loop
   {
     type: 'while',
+    id: 'wait-for-rescan-button',
     whileCondition: () => {
       const scanButton = document.querySelector('[data-testid="scan-button"]') as HTMLButtonElement;
       return !(scanButton && scanButton instanceof HTMLButtonElement && 
@@ -57,44 +60,45 @@ const DEFAULT_ACTIONS: MouseAction[] = [
              !scanButton.disabled);
     },
     whileActions: [
-      { type: 'do-nothing', delay: 500 }, // Wait 500ms, then check again
+      { type: 'do-nothing', delay: 100 },
     ]
   },
   
   // Step 3: Click rescan
-  { type: 'move', target: '[data-testid="scan-button"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="scan-button"]', delay: 2000 },
+  { type: 'move', id: 'move-to-rescan', target: '[data-testid="scan-button"]', delay: 1500 },
+  { type: 'click', id: 'click-rescan', target: '[data-testid="scan-button"]', delay: 2000 },
   
   // Step 4: Condition - if popup appears "You will be disconnected from all BLE devices. Continue?" then click yes otherwise do nothing
   {
     type: 'conditional',
+    id: 'handle-disconnect-popup',
     condition: () => {
       const popup = document.querySelector('[role="dialog"], .dialog, .modal, .popup');
       const popupText = popup?.textContent || '';
       return popupText.includes('You will be disconnected from all BLE devices. Continue?');
     },
     actionsIfTrue: [
-      { type: 'move', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
-      { type: 'click', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
+      { type: 'move', id: 'move-to-confirm', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
+      { type: 'click', id: 'click-confirm', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
     ],
     actionsIfFalse: [
-      { type: 'move', position: { x: 250, y: 250 }, delay: 500 },
+      { type: 'move', id: 'no-popup-wait', position: { x: 250, y: 250 }, delay: 500 },
     ]
   },
   
   // Step 5: Wait 2 seconds
-  { type: 'do-nothing', delay: 2000 },
+  { type: 'do-nothing', id: 'wait-2-seconds', delay: 2000 },
   
   // Step 6: Click a device
-  { type: 'move', target: '[data-testid="device-row"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
+  { type: 'move', id: 'move-to-device', target: '[data-testid="device-row"]', delay: 1500 },
+  { type: 'click', id: 'click-device', target: '[data-testid="device-row"]', delay: 1000 },
   
   // Step 7: Click connect
-  { type: 'move', target: '[data-testid="connect-button"]', delay: 1500 },
-  { type: 'click', target: '[data-testid="connect-button"]', delay: 3000 },
+  { type: 'move', id: 'move-to-connect', target: '[data-testid="connect-button"]', delay: 1500 },
+  { type: 'click', id: 'click-connect', target: '[data-testid="connect-button"]', delay: 3000 },
   
   // Room for more actions...
-  { type: 'move', position: { x: 400, y: 400 }, delay: 2000 },
+  { type: 'move', id: 'final-pause', position: { x: 400, y: 400 }, delay: 2000 },
 ];
 
 export function useMouseSimulation() {
@@ -200,6 +204,7 @@ export function useMouseSimulation() {
     const actualDelay = baseDelay * speedMultipliers[config.speed];
     
     console.log(`🎯 Demo: Executing action [${action.type}]`, {
+      id: action.id,
       target: action.target,
       position: action.position,
       text: action.text,
