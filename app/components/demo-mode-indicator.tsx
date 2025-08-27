@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Pause, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { MouseCursor } from '@/components/mouse-cursor';
 import { useMouseSimulation } from '@/hooks/use-mouse-simulation';
 import { isElectron } from '@/lib/env';
@@ -37,25 +37,6 @@ export function DemoModeIndicator() {
           >
             Demo Mode
           </Badge>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleSimulation}
-            className="h-8 px-3"
-          >
-            {isActive ? (
-              <>
-                <Pause className="h-3 w-3 mr-1" />
-                Pause
-              </>
-            ) : (
-              <>
-                <Play className="h-3 w-3 mr-1" />
-                Start Demo
-              </>
-            )}
-          </Button>
           
           <Button
             variant="ghost"
