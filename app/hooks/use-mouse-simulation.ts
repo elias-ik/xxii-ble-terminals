@@ -78,8 +78,18 @@ const DEFAULT_ACTIONS: MouseAction[] = [
       return popupText.includes('You will be disconnected from all BLE devices. Continue?');
     },
     actionsIfTrue: [
-      { type: 'move', id: 'move-to-confirm', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
-      { type: 'click', id: 'click-confirm', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
+      { 
+        type: 'move', 
+        id: 'move-to-confirm', 
+        target: '[data-testid="confirm-rescan-button"]', 
+        delay: 1000 
+      },
+      { 
+        type: 'click', 
+        id: 'click-confirm', 
+        target: '[data-testid="confirm-rescan-button"]', 
+        delay: 1000 
+      },
     ],
     actionsIfFalse: [
       { type: 'move', id: 'no-popup-wait', position: { x: 250, y: 250 }, delay: 500 },

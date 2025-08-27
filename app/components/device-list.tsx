@@ -315,7 +315,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
             <Button variant="outline" onClick={handleRescanCancel}>
               No
             </Button>
-            <Button onClick={handleRescanConfirm}>
+            <Button onClick={handleRescanConfirm} data-testid="confirm-rescan-button">
               Yes
             </Button>
           </DialogFooter>
