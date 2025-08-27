@@ -135,12 +135,14 @@ export function useMouseSimulation() {
   
   const cursorRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number | undefined>(undefined);
-  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const timeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const hasStartedRef = useRef<boolean>(false);
   const isActiveRef = useRef<boolean>(false);
   const currentActionIndexRef = useRef<number>(0);
   const stopRef = useRef<() => void>(() => {});
   const currentPositionRef = useRef<MousePosition>({ x: 0, y: 0 });
+  const userControlStatusRef = useRef<UserControlStatus>('demo');
+  const isUserControlRef = useRef<boolean>(false);
 
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
@@ -154,10 +156,18 @@ export function useMouseSimulation() {
 
   // Find element by test ID or selector
   const findElement = useCallback((target: string): HTMLElement | null => {
-    if (target.startsWith('[data-testid=')) {
-      return document.querySelector(target) as HTMLElement;
+    // Prefer visible, enabled matches when multiple exist
+    const nodeList = document.querySelectorAll(target) as NodeListOf<HTMLElement>;
+    if (nodeList && nodeList.length > 0) {
+      for (const el of Array.from(nodeList)) {
+        const isVisible = !!el.offsetParent;
+        const isDisabled = (el as HTMLButtonElement).disabled === true;
+        if (isVisible && !isDisabled) return el;
+      }
+      // Fallback to first match
+      return nodeList[0] as HTMLElement;
     }
-    return document.querySelector(target) as HTMLElement;
+    return null;
   }, []);
 
   // Get element position
@@ -172,6 +182,9 @@ export function useMouseSimulation() {
   // Animate mouse movement
   const animateMouseMove = useCallback((from: MousePosition, to: MousePosition, duration: number): Promise<void> => {
     return new Promise((resolve) => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
       const startTime = performance.now();
       const startX = from.x;
       const startY = from.y;
@@ -195,7 +208,7 @@ export function useMouseSimulation() {
         if (progress < 1) {
           animationRef.current = requestAnimationFrame(animate);
         } else {
-          // Animation completed
+          animationRef.current = undefined;
           resolve();
         }
       };
@@ -204,19 +217,36 @@ export function useMouseSimulation() {
     });
   }, []);
 
+  // Helper: cancellable sleep that is cleared on stop
+  const safeSleep = useCallback(async (ms: number) => {
+    if (ms <= 0) return;
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(() => {
+        timeoutsRef.current.delete(t);
+        resolve();
+      }, ms);
+      timeoutsRef.current.add(t);
+    });
+  }, []);
+
   // Execute a mouse action
   const executeAction = useCallback(async (action: MouseAction) => {
     const baseDelay = action.delay || 1000;
     const actualDelay = baseDelay * speedMultipliers[config.speed];
     
-    // Only log if ID is present
+    // Helper to compute distance for avoiding redundant small moves
+    const distance = (a: MousePosition, b: MousePosition) => Math.hypot(a.x - b.x, a.y - b.y);
+    
+    // If we've been stopped or user took control, abort
+    if (!isActiveRef.current || isUserControlRef.current) {
+      return;
+    }
+
+    const actionStart = performance.now();
     if (action.id) {
-      console.log(`🎯 Demo: Executing action [${action.type}]`, {
+      console.log(`▶️ Demo: Starting action [${action.type}]`, {
         id: action.id,
         target: action.target,
-        position: action.position,
-        text: action.text,
-        delay: `${baseDelay}ms → ${actualDelay}ms (${config.speed} speed)`,
         timestamp: new Date().toISOString()
       });
     }
@@ -224,11 +254,7 @@ export function useMouseSimulation() {
     switch (action.type) {
       case 'do-nothing':
         // Just wait for the specified delay
-        await new Promise<void>((resolve) => {
-          setTimeout(() => {
-            resolve();
-          }, actualDelay);
-        });
+        await safeSleep(actualDelay);
         break;
         
       case 'conditional':
@@ -255,7 +281,7 @@ export function useMouseSimulation() {
           let iterationCount = 0;
           const maxIterations = 100; // Prevent infinite loops
           
-          while (action.whileCondition() && iterationCount < maxIterations) {
+          while (isActiveRef.current && !isUserControlRef.current && action.whileCondition() && iterationCount < maxIterations) {
             iterationCount++;
             
             // Execute all actions in the while loop
@@ -267,7 +293,7 @@ export function useMouseSimulation() {
             }
             
             // Check condition again after executing all actions
-            if (!action.whileCondition()) {
+            if (!isActiveRef.current || isUserControlRef.current || !action.whileCondition()) {
               break;
             }
           }
@@ -285,12 +311,18 @@ export function useMouseSimulation() {
           const element = findElement(action.target);
           if (element) {
             const targetPos = getElementPosition(element);
-            await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+            const fromPos = currentPositionRef.current;
+            if (distance(fromPos, targetPos) > 2) {
+              await animateMouseMove(fromPos, targetPos, actualDelay);
+            }
           } else {
             console.warn(`⚠️ Demo: Element not found for target "${action.target}"`);
           }
         } else if (action.position) {
-          await animateMouseMove(currentPositionRef.current, action.position, actualDelay);
+          const fromPos = currentPositionRef.current;
+          if (distance(fromPos, action.position) > 2) {
+            await animateMouseMove(fromPos, action.position, actualDelay);
+          }
         }
         break;
         
@@ -300,16 +332,14 @@ export function useMouseSimulation() {
           if (element) {
             const targetPos = getElementPosition(element);
             
-            // Move to position first, then click
-            await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+            // Move to position first (if needed), then click
+            const fromPos = currentPositionRef.current;
+            if (distance(fromPos, targetPos) > 2) {
+              await animateMouseMove(fromPos, targetPos, actualDelay);
+            }
             
-            // Simulate click after movement completes
-            await new Promise<void>((resolve) => {
-              setTimeout(() => {
-                element.click();
-                resolve();
-              }, actualDelay);
-            });
+            // Click immediately after movement completes
+            element.click();
           } else {
             console.warn(`⚠️ Demo: Element not found for click target "${action.target}"`);
           }
@@ -322,17 +352,15 @@ export function useMouseSimulation() {
           if (element) {
             const targetPos = getElementPosition(element);
             
-            // Move to position first, then type
-            await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+            // Move to position first (if needed), then type
+            const fromPos = currentPositionRef.current;
+            if (distance(fromPos, targetPos) > 2) {
+              await animateMouseMove(fromPos, targetPos, actualDelay);
+            }
             
-            await new Promise<void>((resolve) => {
-              setTimeout(() => {
-                element.focus();
-                element.value = action.text!;
-                element.dispatchEvent(new Event('input', { bubbles: true }));
-                resolve();
-              }, actualDelay);
-            });
+            element.focus();
+            element.value = action.text!;
+            element.dispatchEvent(new Event('input', { bubbles: true }));
           } else {
             console.warn(`⚠️ Demo: Element not found for type target "${action.target}"`);
           }
@@ -344,45 +372,46 @@ export function useMouseSimulation() {
         break;
     }
     
-    // Add 5 second delay for debugging (after any action completes)
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolve();
-      }, 5000);
-    });
-  }, [config.speed, findElement, getElementPosition, animateMouseMove]);
+    // ID logging after action completes (synchronized with visuals)
+    if (action.id) {
+      const durationMs = Math.round(performance.now() - actionStart);
+      console.log(`✅ Demo: Finished action [${action.type}]`, {
+        id: action.id,
+        target: action.target,
+        durationMs,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [config.speed, findElement, getElementPosition, animateMouseMove, userControlStatus]);
   
   // Run next action - using refs to avoid closure issues
   const runNextAction = useCallback(async () => {
-    // Check if we should stop using refs
-    if (!isActiveRef.current || userControlStatus === 'user') {
-      return;
-    }
-    
-    if (currentActionIndexRef.current >= config.actions.length) {
-      if (config.loop) {
-        currentActionIndexRef.current = 0;
-        setCurrentActionIndex(0);
-      } else {
-        stopRef.current();
-        return;
+    // Sequential scheduler loop; no recursive timers
+    while (isActiveRef.current && !isUserControlRef.current) {
+      if (currentActionIndexRef.current >= config.actions.length) {
+        if (config.loop) {
+          currentActionIndexRef.current = 0;
+          setCurrentActionIndex(0);
+        } else {
+          stopRef.current();
+          return;
+        }
       }
+
+      const action = config.actions[currentActionIndexRef.current];
+      await executeAction(action);
+
+      if (!isActiveRef.current || isUserControlRef.current) {
+        break;
+      }
+
+      currentActionIndexRef.current += 1;
+      setCurrentActionIndex(currentActionIndexRef.current);
+
+      // Yield to event loop to keep UI responsive
+      await safeSleep(0);
     }
-    
-    const action = config.actions[currentActionIndexRef.current];
-    await executeAction(action); // Wait for action to complete
-    
-    // Move to next action immediately after current action completes
-    currentActionIndexRef.current += 1;
-    setCurrentActionIndex(currentActionIndexRef.current);
-    
-    // Use setTimeout to avoid stack overflow with recursive calls, but await it
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        runNextAction().then(resolve);
-      }, 0);
-    });
-  }, [userControlStatus, config.actions, config.loop, executeAction]);
+  }, [userControlStatus, config.actions, config.loop, executeAction, safeSleep]);
 
   // Start the simulation
   const startSimulation = useCallback(async () => {
@@ -420,9 +449,9 @@ export function useMouseSimulation() {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+    // Clear all pending timeouts
+    timeoutsRef.current.forEach((t) => clearTimeout(t));
+    timeoutsRef.current.clear();
   }, []);
 
   // Keep stopRef in sync to avoid TDZ issues when referenced above
@@ -434,6 +463,12 @@ export function useMouseSimulation() {
   useEffect(() => {
     currentPositionRef.current = currentPosition;
   }, [currentPosition]);
+  
+  // Keep userControlStatusRef in sync with state
+  useEffect(() => {
+    userControlStatusRef.current = userControlStatus;
+    isUserControlRef.current = userControlStatus === 'user';
+  }, [userControlStatus]);
   
   // Handle postMessage events from parent window
   const handlePostMessage = useCallback((event: MessageEvent) => {
