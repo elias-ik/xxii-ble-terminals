@@ -181,10 +181,61 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'click', id: 'click-dialog-close', target: '[data-testid="dialog-close-button"]', delay: 400 },
 
   // Step 10: In Active Characteristics card, click row Read for Manufacturer and Model
+  { type: 'do-nothing', delay: 500 },
   { type: 'move', id: 'move-to-row-read-manufacturer', target: '[data-testid="row-read-manufacturer"]', delay: 800 },
   { type: 'click', id: 'click-row-read-manufacturer', target: '[data-testid="row-read-manufacturer"]', delay: 400 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'move', id: 'move-to-row-read-model', target: '[data-testid="row-read-model"]', delay: 800 },
   { type: 'click', id: 'click-row-read-model', target: '[data-testid="row-read-model"]', delay: 400 },
+  
+  // Step 11: Reopen editor, scroll to bottom, select notify and writeNoResp for Custom Characteristic 1
+  { type: 'do-nothing', delay: 600 },
+  { type: 'move', id: 'move-to-edit-active-characteristics-2', target: '[data-testid="edit-active-characteristics-button"]', delay: 1200 },
+  { type: 'click', id: 'click-edit-active-characteristics-2', target: '[data-testid="edit-active-characteristics-button"]', delay: 800 },
+  {
+    type: 'while',
+    id: 'wait-for-services-dialog-2',
+    whileCondition: () => {
+      const dlg = document.querySelector('[role="dialog"]');
+      return !dlg;
+    },
+    whileActions: [
+      { type: 'do-nothing', delay: 100 },
+    ]
+  },
+  { type: 'scroll', id: 'scroll-dialog-bottom', target: '[role="dialog"] [data-radix-scroll-area-viewport]', delay: 1500 },
+  {
+    type: 'conditional',
+    id: 'maybe-select-notify-custom-char-1',
+    condition: () => {
+      const el = document.querySelector('[data-testid="notify-custom-char-1"]') as HTMLElement | null;
+      if (!el) return false;
+      const cls = (el.getAttribute('class') || '').toString();
+      const isSelected = cls.includes('bg-primary');
+      return !isSelected; // needs click only if not selected
+    },
+    actionsIfTrue: [
+      { type: 'move', id: 'move-to-notify-custom-char-1', target: '[data-testid="notify-custom-char-1"]', delay: 800 },
+      { type: 'click', id: 'click-notify-custom-char-1', target: '[data-testid="notify-custom-char-1"]', delay: 400 },
+    ],
+    actionsIfFalse: []
+  },
+  {
+    type: 'conditional',
+    id: 'maybe-select-write-no-resp-custom-char-1',
+    condition: () => {
+      const el = document.querySelector('[data-testid="write-no-resp-custom-char-1"]') as HTMLElement | null;
+      if (!el) return false;
+      const cls = (el.getAttribute('class') || '').toString();
+      const isSelected = cls.includes('bg-primary');
+      return !isSelected; // needs click only if not selected
+    },
+    actionsIfTrue: [
+      { type: 'move', id: 'move-to-write-no-resp-custom-char-1', target: '[data-testid="write-no-resp-custom-char-1"]', delay: 800 },
+      { type: 'click', id: 'click-write-no-resp-custom-char-1', target: '[data-testid="write-no-resp-custom-char-1"]', delay: 400 },
+    ],
+    actionsIfFalse: []
+  },
   
   // Room for more actions...
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
@@ -279,6 +330,35 @@ export function useMouseSimulation() {
       };
       
       animationRef.current = requestAnimationFrame(animate);
+    });
+  }, []);
+
+  // Animate element scrollTop to target value
+  const animateElementScroll = useCallback((element: HTMLElement, targetScrollTop: number, duration: number): Promise<void> => {
+    return new Promise((resolve) => {
+      if (duration <= 0) {
+        element.scrollTop = targetScrollTop;
+        resolve();
+        return;
+      }
+      const startTime = performance.now();
+      const startTop = element.scrollTop;
+      const delta = targetScrollTop - startTop;
+
+      const step = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3);
+        element.scrollTop = startTop + delta * ease;
+        if (progress < 1) {
+          animationRef.current = requestAnimationFrame(step);
+        } else {
+          animationRef.current = undefined;
+          resolve();
+        }
+      };
+
+      animationRef.current = requestAnimationFrame(step);
     });
   }, []);
 
@@ -418,7 +498,18 @@ export function useMouseSimulation() {
         break;
         
       case 'scroll':
-        // Implement scroll simulation if needed
+        if (action.target) {
+          const element = document.querySelector(action.target) as HTMLElement | null;
+          if (element) {
+            const maxScroll = Math.max(0, element.scrollHeight - element.clientHeight);
+            const current = element.scrollTop || 0;
+            if (Math.abs(maxScroll - current) > 2) {
+              await animateElementScroll(element, maxScroll, actualDelay);
+            }
+          } else {
+            console.warn(`⚠️ Demo: Element not found for scroll target "${action.target}"`);
+          }
+        }
         break;
     }
     

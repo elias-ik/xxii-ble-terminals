@@ -431,7 +431,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                     }
                                     setDeviceUI(deviceId, { selectedNotifyKeys: Array.from(next) as string[] });
                                   }}
-                                  data-testid="subscribe-button"
+                                  data-testid={ch.uuid === 'custom-char-1' ? 'notify-custom-char-1' : 'subscribe-button'}
                                 >
                                   notify
                                 </Badge>
@@ -483,6 +483,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                       setDeviceUI(deviceId, { selectedServiceId: service.uuid, selectedCharacteristicId: ch.uuid, writeMode: 'writeNoResp' });
                                     }
                                   }}
+                                  data-testid={ch.uuid === 'custom-char-1' ? 'write-no-resp-custom-char-1' : undefined}
                                 >
                                   writeNoResp
                                 </Badge>
