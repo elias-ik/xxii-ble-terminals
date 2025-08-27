@@ -32,8 +32,8 @@ export type UserControlStatus = 'demo' | 'user';
 
 const DEFAULT_ACTIONS: MouseAction[] = [
   // Initial pause to let the page load
-  { type: 'move', id: 'initial-pause', position: { x: 100, y: 100 }, delay: 2000 },
-  
+  { type: 'do-nothing', delay: 1000 }, // Wait 100ms, then check again
+
   // Step 1: Wait for scanning to be finished using while loop
   {
     type: 'while',
@@ -203,7 +203,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
       { type: 'do-nothing', delay: 100 },
     ]
   },
-  { type: 'do-nothing', id: 'pause-before-scroll-dialog', delay: 200 },
+  { type: 'do-nothing', id: 'pause-before-scroll-dialog', delay: 500 },
   { type: 'scroll', id: 'scroll-dialog-bottom', target: '[role="dialog"] [data-radix-scroll-area-viewport]', delay: 1500 },
   {
     type: 'conditional',
@@ -245,21 +245,35 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Room for more actions...
   // Step 12: Use console input to send commands
   { type: 'move', id: 'move-to-terminal-input-1', target: '[data-testid="terminal-input"]', delay: 800 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'click', id: 'click-terminal-input-1', target: '[data-testid="terminal-input"]', delay: 400 },
-  { type: 'do-nothing', id: 'micro-pause-before-type-ATZ', delay: 200 },
-  { type: 'do-nothing', id: 'pause-before-typing-ATZ', delay: 700 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'type', id: 'type-ATZ', target: '[data-testid="terminal-input"]', text: 'ATZ', delay: 400 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'move', id: 'move-to-send-button', target: '[data-testid="send-button"]', delay: 600 },
-  { type: 'do-nothing', id: 'micro-pause-before-click-send-1', delay: 200 },
+  { type: 'while', id: 'wait-send-enabled-1', whileCondition: () => {
+    const btn = document.querySelector('[data-testid="send-button"]') as HTMLButtonElement | null;
+    return !!(btn && btn.disabled);
+  }, whileActions: [ { type: 'do-nothing', delay: 100 } ] },
+  { type: 'do-nothing', delay: 500 },
   { type: 'click', id: 'click-send-button', target: '[data-testid="send-button"]', delay: 400 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'move', id: 'move-to-terminal-input-2', target: '[data-testid="terminal-input"]', delay: 800 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'click', id: 'click-terminal-input-2', target: '[data-testid="terminal-input"]', delay: 400 },
-  { type: 'do-nothing', id: 'micro-pause-before-type-json', delay: 200 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'type', id: 'type-json-cmd', target: '[data-testid="terminal-input"]', text: '{ "cmd" : [ 44, 67, 125 ] }', delay: 600 },
+  { type: 'do-nothing', delay: 500 },
   { type: 'move', id: 'move-to-send-button-2', target: '[data-testid="send-button"]', delay: 600 },
-  { type: 'do-nothing', id: 'micro-pause-before-click-send-2', delay: 200 },
+  { type: 'while', id: 'wait-send-enabled-2', whileCondition: () => {
+    const btn = document.querySelector('[data-testid="send-button"]') as HTMLButtonElement | null;
+    return !!(btn && btn.disabled);
+  }, whileActions: [ { type: 'do-nothing', delay: 100 } ] },
+  { type: 'do-nothing', delay: 500 },
   { type: 'click', id: 'click-send-button-2', target: '[data-testid="send-button"]', delay: 400 },
-  { type: 'do-nothing', id: 'final-pause', delay: 2000 },
+
+  { type: 'do-nothing', delay: 100000 }, // Wait 100ms, then check again
+
 ];
 
 export function useMouseSimulation() {
@@ -301,8 +315,8 @@ export function useMouseSimulation() {
         const isDisabled = (el as HTMLButtonElement).disabled === true;
         if (isVisible && !isDisabled) return el;
       }
-      // Fallback to first match
-      return nodeList[0] as HTMLElement;
+      // No suitable enabled visible element found
+      return null;
     }
     return null;
   }, []);
@@ -511,7 +525,9 @@ export function useMouseSimulation() {
             
             element.focus();
             element.value = action.text!;
+            // Notify React of programmatic value change
             element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
           } else {
             console.warn(`⚠️ Demo: Element not found for type target "${action.target}"`);
           }
