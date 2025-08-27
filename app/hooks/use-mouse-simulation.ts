@@ -116,21 +116,8 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   },
 
   // Step 7: Click Edit on Active Characteristics (exists in two possible places)
-  {
-    type: 'conditional',
-    id: 'open-active-characteristics-editor',
-    condition: () => {
-      const editButton = document.querySelector('[data-testid="edit-active-characteristics-button"]');
-      return !!(editButton && editButton instanceof HTMLElement);
-    },
-    actionsIfTrue: [
-      { type: 'move', id: 'move-to-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 1200 },
-      { type: 'click', id: 'click-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 800 },
-    ],
-    actionsIfFalse: [
-      { type: 'do-nothing', id: 'no-edit-button-found-wait', delay: 1000 },
-    ]
-  },
+  { type: 'move', id: 'move-to-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 1200 },
+  { type: 'click', id: 'click-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 800 },
   
   // Room for more actions...
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
