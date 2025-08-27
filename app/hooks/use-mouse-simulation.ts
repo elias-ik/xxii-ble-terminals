@@ -203,6 +203,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
       { type: 'do-nothing', delay: 100 },
     ]
   },
+  { type: 'do-nothing', id: 'pause-before-scroll-dialog', delay: 200 },
   { type: 'scroll', id: 'scroll-dialog-bottom', target: '[role="dialog"] [data-radix-scroll-area-viewport]', delay: 1500 },
   {
     type: 'conditional',
@@ -245,14 +246,18 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Step 12: Use console input to send commands
   { type: 'move', id: 'move-to-terminal-input-1', target: '[data-testid="terminal-input"]', delay: 800 },
   { type: 'click', id: 'click-terminal-input-1', target: '[data-testid="terminal-input"]', delay: 400 },
+  { type: 'do-nothing', id: 'micro-pause-before-type-ATZ', delay: 200 },
   { type: 'do-nothing', id: 'pause-before-typing-ATZ', delay: 700 },
   { type: 'type', id: 'type-ATZ', target: '[data-testid="terminal-input"]', text: 'ATZ', delay: 400 },
   { type: 'move', id: 'move-to-send-button', target: '[data-testid="send-button"]', delay: 600 },
+  { type: 'do-nothing', id: 'micro-pause-before-click-send-1', delay: 200 },
   { type: 'click', id: 'click-send-button', target: '[data-testid="send-button"]', delay: 400 },
   { type: 'move', id: 'move-to-terminal-input-2', target: '[data-testid="terminal-input"]', delay: 800 },
   { type: 'click', id: 'click-terminal-input-2', target: '[data-testid="terminal-input"]', delay: 400 },
+  { type: 'do-nothing', id: 'micro-pause-before-type-json', delay: 200 },
   { type: 'type', id: 'type-json-cmd', target: '[data-testid="terminal-input"]', text: '{ "cmd" : [ 44, 67, 125 ] }', delay: 600 },
   { type: 'move', id: 'move-to-send-button-2', target: '[data-testid="send-button"]', delay: 600 },
+  { type: 'do-nothing', id: 'micro-pause-before-click-send-2', delay: 200 },
   { type: 'click', id: 'click-send-button-2', target: '[data-testid="send-button"]', delay: 400 },
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
 ];
