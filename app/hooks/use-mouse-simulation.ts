@@ -376,14 +376,16 @@ export function useMouseSimulation() {
     currentActionIndexRef.current += 1;
     setCurrentActionIndex(currentActionIndexRef.current);
     
-    // Use setTimeout to avoid stack overflow with recursive calls
-    setTimeout(() => {
-      runNextAction();
-    }, 0);
+    // Use setTimeout to avoid stack overflow with recursive calls, but await it
+    await new Promise<void>((resolve) => {
+      setTimeout(() => {
+        runNextAction().then(resolve);
+      }, 0);
+    });
   }, [userControlStatus, config.actions, config.loop, executeAction]);
 
   // Start the simulation
-  const startSimulation = useCallback(() => {
+  const startSimulation = useCallback(async () => {
     if (!config.enabled || isActiveRef.current || userControlStatus === 'user') {
       return;
     }
@@ -402,7 +404,7 @@ export function useMouseSimulation() {
     setCurrentActionIndex(0);
     
     // Start the first action
-    runNextAction();
+    await runNextAction();
   }, [config.enabled, userControlStatus, config.actions.length, config.speed, config.loop, runNextAction]);
   
   // Stop the simulation
@@ -451,7 +453,7 @@ export function useMouseSimulation() {
         setUserControlStatus('demo');
         // Auto-start simulation when control is handed back
         if (config.enabled) {
-          startSimulation();
+          startSimulation().catch(console.error);
         }
       }
     }
@@ -471,7 +473,7 @@ export function useMouseSimulation() {
   // Auto-start simulation when in demo mode and control is with demo
   useEffect(() => {
     if (!isElectron && config.enabled && userControlStatus === 'demo' && !isActive && !hasStartedRef.current) {
-      startSimulation();
+      startSimulation().catch(console.error);
     }
   }, [isElectron, config.enabled, userControlStatus, isActive, startSimulation]);
   
