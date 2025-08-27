@@ -12,7 +12,7 @@ export function MouseCursor({ position, visible, className }: MouseCursorProps) 
   
   useEffect(() => {
     if (cursorRef.current) {
-      cursorRef.current.style.transform = `translate(${position.x}px, ${position.y}px)`;
+      cursorRef.current.style.transform = `translate(${position.x - 36}px, ${position.y - 36}px)`;
     }
   }, [position]);
   
