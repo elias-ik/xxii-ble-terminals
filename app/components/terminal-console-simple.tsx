@@ -349,7 +349,15 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                           if (shouldUnsubscribe) {
                             (useBLEStore.getState() as any).unsubscribe(deviceId, svc.uuid, ch.uuid);
                           }
-                        }}>
+                        }}
+                        data-testid={ch.name === 'Manufacturer Name'
+                          ? 'remove-manufacturer'
+                          : (ch.name === 'Model Number'
+                            ? 'remove-model'
+                            : ((ch.uuid === 'custom-char-1' || ch.name === 'Custom Characteristic 1')
+                              ? 'remove-custom-char-1'
+                              : undefined))}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>

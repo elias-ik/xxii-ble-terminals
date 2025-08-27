@@ -272,7 +272,19 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'do-nothing', delay: 500 },
   { type: 'click', id: 'click-send-button-2', target: '[data-testid="send-button"]', delay: 400 },
 
-  { type: 'do-nothing', delay: 100000 }, // Wait 100ms, then check again
+  // Step 13: Remove active characteristics in order: Manufacturer, Model, Custom Char 1
+  { type: 'move', id: 'move-to-remove-manufacturer', target: '[data-testid="remove-manufacturer"]', delay: 800 },
+  { type: 'do-nothing', delay: 200 },
+  { type: 'click', id: 'click-remove-manufacturer', target: '[data-testid="remove-manufacturer"]', delay: 400 },
+  { type: 'do-nothing', delay: 300 },
+  { type: 'move', id: 'move-to-remove-model', target: '[data-testid="remove-model"]', delay: 800 },
+  { type: 'do-nothing', delay: 200 },
+  { type: 'click', id: 'click-remove-model', target: '[data-testid="remove-model"]', delay: 400 },
+  { type: 'do-nothing', delay: 300 },
+  { type: 'move', id: 'move-to-remove-custom-char-1', target: '[data-testid="remove-custom-char-1"]', delay: 800 },
+  { type: 'do-nothing', delay: 200 },
+  { type: 'click', id: 'click-remove-custom-char-1', target: '[data-testid="remove-custom-char-1"]', delay: 400 },
+  { type: 'do-nothing', delay: 2000 },
 
 ];
 
