@@ -325,7 +325,13 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                       </div>
                       <div className="flex items-center gap-2">
                         {showRead && (
-                          <Button size="sm" variant="outline" className="px-2" onClick={() => read(deviceId, svc.uuid, ch.uuid)}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="px-2"
+                            onClick={() => read(deviceId, svc.uuid, ch.uuid)}
+                            data-testid={ch.name === 'Manufacturer Name' ? 'row-read-manufacturer' : (ch.name === 'Model Number' ? 'row-read-model' : undefined)}
+                          >
                             <BookOpen className="h-3 w-3 mr-1" /> Read
                           </Button>
                         )}

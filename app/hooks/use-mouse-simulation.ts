@@ -151,6 +151,12 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Step 9: Close the dialog
   { type: 'move', id: 'move-to-dialog-close', target: '[data-testid="dialog-close-button"]', delay: 600 },
   { type: 'click', id: 'click-dialog-close', target: '[data-testid="dialog-close-button"]', delay: 400 },
+
+  // Step 10: In Active Characteristics card, click row Read for Manufacturer and Model
+  { type: 'move', id: 'move-to-row-read-manufacturer', target: '[data-testid="row-read-manufacturer"]', delay: 800 },
+  { type: 'click', id: 'click-row-read-manufacturer', target: '[data-testid="row-read-manufacturer"]', delay: 400 },
+  { type: 'move', id: 'move-to-row-read-model', target: '[data-testid="row-read-model"]', delay: 800 },
+  { type: 'click', id: 'click-row-read-model', target: '[data-testid="row-read-model"]', delay: 400 },
   
   // Room for more actions...
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
