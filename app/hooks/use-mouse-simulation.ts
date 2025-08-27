@@ -147,6 +147,10 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'click', id: 'click-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 400 },
   { type: 'move', id: 'move-to-read-model', target: '[data-testid="read-model-number"]', delay: 800 },
   { type: 'click', id: 'click-read-model', target: '[data-testid="read-model-number"]', delay: 400 },
+
+  // Step 9: Close the dialog
+  { type: 'move', id: 'move-to-dialog-close', target: '[data-testid="dialog-close-button"]', delay: 600 },
+  { type: 'click', id: 'click-dialog-close', target: '[data-testid="dialog-close-button"]', delay: 400 },
   
   // Room for more actions...
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
