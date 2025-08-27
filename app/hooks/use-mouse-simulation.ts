@@ -537,7 +537,15 @@ export function useMouseSimulation() {
             }
             
             element.focus();
-            setReactInputValue(element, action.text!);
+            const textToType = action.text!;
+            for (let i = 0; i < textToType.length; i++) {
+              const nextValue = (element.value ?? '') + textToType[i];
+              setReactInputValue(element, nextValue);
+              await safeSleep(25);
+              if (!isActiveRef.current || isUserControlRef.current) {
+                break;
+              }
+            }
           } else {
             console.warn(`⚠️ Demo: Element not found for type target "${action.target}"`);
           }
