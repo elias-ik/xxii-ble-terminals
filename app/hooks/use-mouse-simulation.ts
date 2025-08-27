@@ -8,7 +8,7 @@ export interface MousePosition {
 }
 
 export interface MouseAction {
-  type: 'move' | 'click' | 'type' | 'scroll' | 'conditional';
+  type: 'move' | 'click' | 'type' | 'scroll' | 'conditional' | 'while' | 'do-nothing';
   target?: string;
   position?: MousePosition;
   text?: string;
@@ -16,6 +16,8 @@ export interface MouseAction {
   condition?: () => boolean;
   actionsIfTrue?: MouseAction[];
   actionsIfFalse?: MouseAction[];
+  whileCondition?: () => boolean;
+  whileActions?: MouseAction[];
 }
 
 export interface MouseSimulationConfig {
@@ -32,36 +34,30 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Initial pause to let the page load
   { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
   
-  // Step 1: Wait for scanning to be finished
+  // Step 1: Wait for scanning to be finished using while loop
   {
-    type: 'conditional',
-    condition: () => {
+    type: 'while',
+    whileCondition: () => {
       const scanButton = document.querySelector('[data-testid="scan-button"]');
       return !!(scanButton && scanButton instanceof HTMLElement && 
              (scanButton.textContent?.includes('Stop') || scanButton.textContent?.includes('Scanning')));
     },
-    actionsIfTrue: [
-      { type: 'move', position: { x: 150, y: 150 }, delay: 3000 },
-    ],
-    actionsIfFalse: [
-      { type: 'move', position: { x: 150, y: 150 }, delay: 500 },
+    whileActions: [
+      { type: 'do-nothing', delay: 1000 }, // Wait 1 second, then check again
     ]
   },
   
-  // Step 2: Wait until the rescan button is clickable again
+  // Step 2: Wait until the rescan button is clickable again using while loop
   {
-    type: 'conditional',
-    condition: () => {
+    type: 'while',
+    whileCondition: () => {
       const scanButton = document.querySelector('[data-testid="scan-button"]') as HTMLButtonElement;
-      return !!(scanButton && scanButton instanceof HTMLButtonElement && 
+      return !(scanButton && scanButton instanceof HTMLButtonElement && 
              scanButton.textContent?.includes('Rescan') && 
              !scanButton.disabled);
     },
-    actionsIfTrue: [
-      { type: 'move', position: { x: 200, y: 200 }, delay: 500 },
-    ],
-    actionsIfFalse: [
-      { type: 'move', position: { x: 200, y: 200 }, delay: 2000 },
+    whileActions: [
+      { type: 'do-nothing', delay: 500 }, // Wait 500ms, then check again
     ]
   },
   
@@ -87,7 +83,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   },
   
   // Step 5: Wait 2 seconds
-  { type: 'move', position: { x: 300, y: 300 }, delay: 2000 },
+  { type: 'do-nothing', delay: 2000 },
   
   // Step 6: Click a device
   { type: 'move', target: '[data-testid="device-row"]', delay: 1500 },
@@ -212,6 +208,54 @@ export function useMouseSimulation() {
     });
     
     switch (action.type) {
+      case 'while':
+        if (action.whileCondition && action.whileActions) {
+          let iterationCount = 0;
+          const maxIterations = 100; // Prevent infinite loops
+          
+          while (action.whileCondition() && iterationCount < maxIterations) {
+            iterationCount++;
+            console.log(`🔄 Demo: While loop iteration ${iterationCount}`);
+            
+            // Execute all actions in the while loop
+            for (let i = 0; i < action.whileActions.length; i++) {
+              const whileAction = action.whileActions[i];
+              const whileDelay = (whileAction.delay || 1000) * speedMultipliers[config.speed];
+              
+              // Execute the while action
+              await new Promise<void>((resolve) => {
+                setTimeout(async () => {
+                  await executeAction(whileAction);
+                  resolve();
+                }, whileDelay);
+              });
+            }
+            
+            // Check condition again after executing all actions
+            if (!action.whileCondition()) {
+              console.log(`✅ Demo: While loop condition became false after ${iterationCount} iterations`);
+              break;
+            }
+          }
+          
+          if (iterationCount >= maxIterations) {
+            console.warn(`⚠️ Demo: While loop reached maximum iterations (${maxIterations}), stopping`);
+          }
+        } else {
+          console.warn(`⚠️ Demo: While action has no condition or actions`);
+        }
+        break;
+        
+      case 'do-nothing':
+        console.log(`⏸️ Demo: Doing nothing for ${actualDelay}ms`);
+        // Just wait for the specified delay
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, actualDelay);
+        });
+        break;
+        
       case 'conditional':
         if (action.condition) {
           const conditionResult = action.condition();
