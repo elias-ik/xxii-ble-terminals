@@ -424,6 +424,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                     }
                                     setDeviceUI(deviceId, { selectedNotifyKeys: Array.from(next) as string[] });
                                   }}
+                                  data-testid="subscribe-button"
                                 >
                                   notify
                                 </Badge>

@@ -25,6 +25,7 @@ export function ConsoleHeader({ onOpenSettings, onClear }: ConsoleHeaderProps) {
           size="sm"
           onClick={onClear}
           aria-label="Clear console"
+          data-testid="clear-console-button"
         >
           <Trash2 className="h-4 w-4 mr-2" />
           Clear

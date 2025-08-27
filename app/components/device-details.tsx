@@ -168,7 +168,7 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
             {device.rssi} dBm ({getRssiStrength(device.rssi)})
           </span>
           <span className="ml-2">{getConnectionStatusBadge()}</span>
-          <Button onClick={handleDisconnect} disabled={isActionDisabled} variant="destructive" size="sm">
+          <Button onClick={handleDisconnect} disabled={isActionDisabled} variant="destructive" size="sm" data-testid="disconnect-button">
             {isDisconnecting ? (
               <Loader2 className="h-4 w-4 mr-1 animate-spin" />
             ) : (
@@ -242,7 +242,7 @@ export function DeviceDetails({ device }: DeviceDetailsProps) {
             {getConnectionStatusBadge()}
           </div>
           <div className="flex justify-center">
-            <Button onClick={handleConnect} disabled={isActionDisabled} size="lg" className="w-48">
+            <Button onClick={handleConnect} disabled={isActionDisabled} size="lg" className="w-48" data-testid="connect-button">
               <Wifi className="h-5 w-5 mr-2" />
               {device.connectionStatus === 'connecting' || isConnecting ? 'Connecting…' : 'Connect'}
             </Button>

@@ -16,6 +16,7 @@ interface DeviceRowProps {
   connectionBadge: React.ReactNode;
   accessibleLabel: string;
   onSelect: (deviceId: string) => void;
+  'data-testid'?: string;
 }
 
 export const DeviceRow: React.FC<DeviceRowProps> = React.memo(function DeviceRow({
@@ -33,6 +34,7 @@ export const DeviceRow: React.FC<DeviceRowProps> = React.memo(function DeviceRow
   connectionBadge,
   accessibleLabel,
   onSelect,
+  'data-testid': dataTestId,
 }) {
   const onKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -52,6 +54,7 @@ export const DeviceRow: React.FC<DeviceRowProps> = React.memo(function DeviceRow
       role="button"
       aria-label={accessibleLabel}
       aria-pressed={isSelected}
+      data-testid={dataTestId}
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">

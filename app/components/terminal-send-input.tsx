@@ -103,12 +103,14 @@ export const TerminalSendInput: React.FC<TerminalSendInputProps> = React.memo(fu
           className={`flex-1 ${sendFormat === 'HEX' && debouncedValidation && !debouncedValidation.isValid ? 'border-red-500' : ''}`}
           aria-label={`Message input (${sendFormat} format)`}
           aria-describedby={debouncedValidation ? 'input-validation' : undefined}
+          data-testid="terminal-input"
         />
 
         <Button
           onClick={handleSend}
           disabled={isSendDisabled}
           aria-label="Send message"
+          data-testid="send-button"
         >
           <Send className="h-4 w-4" />
         </Button>

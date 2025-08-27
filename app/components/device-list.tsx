@@ -230,6 +230,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
             size="sm"
             className="shrink-0"
             aria-label="Scan for devices"
+            data-testid="scan-button"
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
             Rescan
@@ -252,6 +253,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                     disabled={isScanning}
                     className="w-full"
                     aria-label="Scan for devices"
+                    data-testid="scan-button"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
                     Scan for Devices
@@ -289,6 +291,7 @@ export function DeviceList({ onDeviceSelect, selectedDevice }: DeviceListProps) 
                     connectionBadge={getConnectionBadge(device)}
                     accessibleLabel={accessibleLabel}
                     onSelect={handleDeviceClick}
+                    data-testid="device-row"
                   />
                 );
               })}

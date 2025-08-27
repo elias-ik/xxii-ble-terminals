@@ -6,6 +6,7 @@ import { DeviceList } from "../components/device-list";
 import { DeviceDetails } from "../components/device-details";
 import { ClientOnly } from "../components/client-only";
 import { useKeyboardShortcuts } from "../hooks/use-keyboard-shortcuts";
+import { DemoModeIndicator } from "../components/demo-mode-indicator";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -55,6 +56,9 @@ function HomeContent() {
 
   return (
     <div className="h-screen flex flex-col bg-background">
+      {/* Demo Mode Indicator */}
+      <DemoModeIndicator />
+      
       {/* Top App Bar */}
       <header className="border-b bg-card">
         <div className="flex items-center justify-between px-4 py-3">
