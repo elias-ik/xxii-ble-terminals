@@ -219,7 +219,7 @@ export function useMouseSimulation() {
 
   // Helper: cancellable sleep that is cleared on stop
   const safeSleep = useCallback(async (ms: number) => {
-    if (ms <= 0) return;
+    if (ms <= 0) ms = 1; // ensure a macrotask yield
     await new Promise<void>((resolve) => {
       const t = setTimeout(() => {
         timeoutsRef.current.delete(t);
@@ -387,6 +387,10 @@ export function useMouseSimulation() {
   // Run next action - using refs to avoid closure issues
   const runNextAction = useCallback(async () => {
     // Sequential scheduler loop; no recursive timers
+    console.log('🧭 Demo: Scheduler starting', {
+      totalActions: config.actions.length,
+      timestamp: new Date().toISOString()
+    });
     while (isActiveRef.current && !isUserControlRef.current) {
       if (currentActionIndexRef.current >= config.actions.length) {
         if (config.loop) {
@@ -399,9 +403,20 @@ export function useMouseSimulation() {
       }
 
       const action = config.actions[currentActionIndexRef.current];
+      console.log('➡️ Demo: Executing index', {
+        index: currentActionIndexRef.current,
+        type: action.type,
+        id: action.id,
+        timestamp: new Date().toISOString()
+      });
       await executeAction(action);
 
       if (!isActiveRef.current || isUserControlRef.current) {
+        console.log('🛑 Demo: Scheduler stopping mid-loop', {
+          isActive: isActiveRef.current,
+          userControl: isUserControlRef.current,
+          timestamp: new Date().toISOString()
+        });
         break;
       }
 
@@ -411,6 +426,13 @@ export function useMouseSimulation() {
       // Yield to event loop to keep UI responsive
       await safeSleep(0);
     }
+    console.log('✅ Demo: Scheduler finished', {
+      finalIndex: currentActionIndexRef.current,
+      loop: config.loop,
+      isActive: isActiveRef.current,
+      userControl: isUserControlRef.current,
+      timestamp: new Date().toISOString()
+    });
   }, [userControlStatus, config.actions, config.loop, executeAction, safeSleep]);
 
   // Start the simulation
@@ -432,8 +454,8 @@ export function useMouseSimulation() {
     setIsActive(true);
     setCurrentActionIndex(0);
     
-    // Start the first action
-    await runNextAction();
+    // Start the scheduler (fire-and-forget)
+    void runNextAction();
   }, [config.enabled, userControlStatus, config.actions.length, config.speed, config.loop, runNextAction]);
   
   // Stop the simulation
