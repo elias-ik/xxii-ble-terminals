@@ -252,6 +252,8 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'move', id: 'move-to-terminal-input-2', target: '[data-testid="terminal-input"]', delay: 800 },
   { type: 'click', id: 'click-terminal-input-2', target: '[data-testid="terminal-input"]', delay: 400 },
   { type: 'type', id: 'type-json-cmd', target: '[data-testid="terminal-input"]', text: '{ "cmd" : [ 44, 67, 125 ] }', delay: 600 },
+  { type: 'move', id: 'move-to-send-button-2', target: '[data-testid="send-button"]', delay: 600 },
+  { type: 'click', id: 'click-send-button-2', target: '[data-testid="send-button"]', delay: 400 },
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
 ];
 
