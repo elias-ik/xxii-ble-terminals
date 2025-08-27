@@ -75,9 +75,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
         delay: 1000 
       },
     ],
-    actionsIfFalse: [
-      { type: 'move', id: 'no-popup-wait', position: { x: 250, y: 250 }, delay: 500 },
-    ]
+    actionsIfFalse: []
   },
   
   // Step 4: Wait 2 seconds
