@@ -286,6 +286,15 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'click', id: 'click-remove-custom-char-1', target: '[data-testid="remove-custom-char-1"]', delay: 400 },
   { type: 'do-nothing', delay: 2000 },
 
+  // Step 14: Clear console via button (text + icon)
+  { type: 'move', id: 'move-to-clear-console', target: '[data-testid="clear-console-button"]', delay: 800 },
+  { type: 'do-nothing', delay: 200 },
+  { type: 'click', id: 'click-clear-console-text', target: '[data-testid="clear-console-button"]', delay: 400 },
+  { type: 'do-nothing', delay: 400 },
+  { type: 'move', id: 'move-to-clear-console-icon', target: '[data-testid=\"clear-console-button\"] svg', delay: 800 },
+  { type: 'do-nothing', delay: 200 },
+  { type: 'click', id: 'click-clear-console-icon', target: '[data-testid=\"clear-console-button\"] svg', delay: 400 },
+
 ];
 
 export function useMouseSimulation() {
