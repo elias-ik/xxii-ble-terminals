@@ -23,7 +23,6 @@ export interface MouseAction {
 
 export interface MouseSimulationConfig {
   enabled: boolean;
-  speed: 'slow' | 'normal' | 'fast';
   actions: MouseAction[];
   loop: boolean;
   showCursor: boolean;
@@ -47,7 +46,8 @@ const DEFAULT_ACTIONS: MouseAction[] = [
       { type: 'do-nothing', delay: 100 }, // Wait 100ms, then check again
     ]
   },
-  
+  { type: 'do-nothing', delay: 1000 }, // Wait 100ms, then check again
+
   // Step 2: Click rescan
   { type: 'move', id: 'move-to-rescan', target: '[data-testid="scan-button"]', delay: 1500 },
   { type: 'click', id: 'click-rescan', target: '[data-testid="scan-button"]', delay: 2000 },
@@ -122,7 +122,6 @@ const DEFAULT_ACTIONS: MouseAction[] = [
 export function useMouseSimulation() {
   const [config, setConfig] = useState<MouseSimulationConfig>({
     enabled: false, // Will be set to true in demo mode via useEffect
-    speed: 'normal',
     actions: DEFAULT_ACTIONS,
     loop: true,
     showCursor: true,
@@ -147,12 +146,7 @@ export function useMouseSimulation() {
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
 
-  // Speed multipliers
-  const speedMultipliers = {
-    slow: 2.0,
-    normal: 1.0,
-    fast: 0.5,
-  };
+  // Note: speed has been removed; action delays are used as-is
 
   // Find element by test ID or selector
   const findElement = useCallback((target: string): HTMLElement | null => {
@@ -231,8 +225,7 @@ export function useMouseSimulation() {
 
   // Execute a mouse action
   const executeAction = useCallback(async (action: MouseAction) => {
-    const baseDelay = action.delay || 1000;
-    const actualDelay = baseDelay * speedMultipliers[config.speed];
+    const actualDelay = action.delay ?? 1000;
     
     // Helper to compute distance for avoiding redundant small moves
     const distance = (a: MousePosition, b: MousePosition) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -382,7 +375,7 @@ export function useMouseSimulation() {
         timestamp: new Date().toISOString()
       });
     }
-  }, [config.speed, findElement, getElementPosition, animateMouseMove, userControlStatus]);
+  }, [findElement, getElementPosition, animateMouseMove]);
   
   // Run next action - using refs to avoid closure issues
   const runNextAction = useCallback(async () => {
@@ -443,7 +436,6 @@ export function useMouseSimulation() {
     
     console.log(`🚀 Demo: Starting simulation`, {
       totalActions: config.actions.length,
-      speed: config.speed,
       loop: config.loop,
       timestamp: new Date().toISOString()
     });
@@ -456,7 +448,7 @@ export function useMouseSimulation() {
     
     // Start the scheduler (fire-and-forget)
     void runNextAction();
-  }, [config.enabled, userControlStatus, config.actions.length, config.speed, config.loop, runNextAction]);
+  }, [config.enabled, userControlStatus, config.actions.length, config.loop, runNextAction]);
   
   // Stop the simulation
   const stopSimulation = useCallback(() => {
