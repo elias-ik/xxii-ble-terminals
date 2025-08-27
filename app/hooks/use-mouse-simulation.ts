@@ -305,7 +305,12 @@ export function useMouseSimulation() {
     showCursor: true,
   });
   
-  const [currentPosition, setCurrentPosition] = useState<MousePosition>({ x: 0, y: 0 });
+  // Start cursor centered on screen
+  const initialCursorPosition: MousePosition = (typeof window !== 'undefined')
+    ? { x: Math.floor(window.innerWidth / 2), y: Math.floor(window.innerHeight / 2) }
+    : { x: 0, y: 0 };
+
+  const [currentPosition, setCurrentPosition] = useState<MousePosition>(initialCursorPosition);
   const [isActive, setIsActive] = useState(false);
   const [currentActionIndex, setCurrentActionIndex] = useState(0);
   const [userControlStatus, setUserControlStatus] = useState<UserControlStatus>('demo');
@@ -317,7 +322,7 @@ export function useMouseSimulation() {
   const isActiveRef = useRef<boolean>(false);
   const currentActionIndexRef = useRef<number>(0);
   const stopRef = useRef<() => void>(() => {});
-  const currentPositionRef = useRef<MousePosition>({ x: 0, y: 0 });
+  const currentPositionRef = useRef<MousePosition>(initialCursorPosition);
   const userControlStatusRef = useRef<UserControlStatus>('demo');
   const isUserControlRef = useRef<boolean>(false);
 
