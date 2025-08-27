@@ -32,25 +32,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Initial pause to let the page load
   { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
   
-  // Step 1: If connected to any devices, select the device, then disconnect
-  {
-    type: 'conditional',
-    condition: () => {
-      const disconnectButton = document.querySelector('[data-testid="disconnect-button"]');
-      return !!(disconnectButton && disconnectButton instanceof HTMLElement && disconnectButton.offsetParent !== null);
-    },
-    actionsIfTrue: [
-      { type: 'move', target: '[data-testid="device-row"]', delay: 1500 },
-      { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
-      { type: 'move', target: '[data-testid="disconnect-button"]', delay: 1500 },
-      { type: 'click', target: '[data-testid="disconnect-button"]', delay: 2000 },
-    ],
-    actionsIfFalse: [
-      { type: 'move', position: { x: 150, y: 150 }, delay: 500 },
-    ]
-  },
-  
-  // Step 2: If scanning is running, wait for scanning to be over
+  // Step 1: Wait for scanning to be finished
   {
     type: 'conditional',
     condition: () => {
@@ -59,10 +41,27 @@ const DEFAULT_ACTIONS: MouseAction[] = [
              (scanButton.textContent?.includes('Stop') || scanButton.textContent?.includes('Scanning')));
     },
     actionsIfTrue: [
-      { type: 'move', position: { x: 200, y: 200 }, delay: 3000 },
+      { type: 'move', position: { x: 150, y: 150 }, delay: 3000 },
     ],
     actionsIfFalse: [
+      { type: 'move', position: { x: 150, y: 150 }, delay: 500 },
+    ]
+  },
+  
+  // Step 2: Wait until the rescan button is clickable again
+  {
+    type: 'conditional',
+    condition: () => {
+      const scanButton = document.querySelector('[data-testid="scan-button"]') as HTMLButtonElement;
+      return !!(scanButton && scanButton instanceof HTMLButtonElement && 
+             scanButton.textContent?.includes('Rescan') && 
+             !scanButton.disabled);
+    },
+    actionsIfTrue: [
       { type: 'move', position: { x: 200, y: 200 }, delay: 500 },
+    ],
+    actionsIfFalse: [
+      { type: 'move', position: { x: 200, y: 200 }, delay: 2000 },
     ]
   },
   
@@ -70,26 +69,33 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   { type: 'move', target: '[data-testid="scan-button"]', delay: 1500 },
   { type: 'click', target: '[data-testid="scan-button"]', delay: 2000 },
   
-  // Step 4: Wait 1000ms
-  { type: 'move', position: { x: 300, y: 300 }, delay: 1000 },
-  
-  // Step 5: Connect to a device (only if devices are available)
+  // Step 4: Condition - if popup appears "You will be disconnected from all BLE devices. Continue?" then click yes otherwise do nothing
   {
     type: 'conditional',
     condition: () => {
-      const deviceRows = document.querySelectorAll('[data-testid="device-row"]');
-      return deviceRows.length > 0;
+      const popup = document.querySelector('[role="dialog"], .dialog, .modal, .popup');
+      const popupText = popup?.textContent || '';
+      return popupText.includes('You will be disconnected from all BLE devices. Continue?');
     },
     actionsIfTrue: [
-      { type: 'move', target: '[data-testid="device-row"]', delay: 2000 },
-      { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
-      { type: 'move', target: '[data-testid="connect-button"]', delay: 1500 },
-      { type: 'click', target: '[data-testid="connect-button"]', delay: 3000 },
+      { type: 'move', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
+      { type: 'click', target: 'button:contains("Yes"), button:contains("Continue"), [data-testid="confirm-button"]', delay: 1000 },
     ],
     actionsIfFalse: [
-      { type: 'move', position: { x: 350, y: 350 }, delay: 2000 },
+      { type: 'move', position: { x: 250, y: 250 }, delay: 500 },
     ]
   },
+  
+  // Step 5: Wait 2 seconds
+  { type: 'move', position: { x: 300, y: 300 }, delay: 2000 },
+  
+  // Step 6: Click a device
+  { type: 'move', target: '[data-testid="device-row"]', delay: 1500 },
+  { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
+  
+  // Step 7: Click connect
+  { type: 'move', target: '[data-testid="connect-button"]', delay: 1500 },
+  { type: 'click', target: '[data-testid="connect-button"]', delay: 3000 },
   
   // Room for more actions...
   { type: 'move', position: { x: 400, y: 400 }, delay: 2000 },
