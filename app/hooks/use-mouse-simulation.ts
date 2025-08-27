@@ -26,38 +26,55 @@ export interface MouseSimulationConfig {
 export type UserControlStatus = 'demo' | 'user';
 
 const DEFAULT_ACTIONS: MouseAction[] = [
-  // Start with scanning
-  { type: 'move', target: '[data-testid="scan-button"]', delay: 1000 },
-  { type: 'click', target: '[data-testid="scan-button"]', delay: 2000 },
+  // Initial pause to let the page load
+  { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
   
-  // Wait for devices to appear, then select one
-  { type: 'move', target: '[data-testid="device-row"]', delay: 3000 },
-  { type: 'click', target: '[data-testid="device-row"]', delay: 1000 },
+  // Step 1: Start scanning for devices
+  { type: 'move', target: '[data-testid="scan-button"]', delay: 1500 },
+  { type: 'click', target: '[data-testid="scan-button"]', delay: 3000 },
   
-  // Connect to device
-  { type: 'move', target: '[data-testid="connect-button"]', delay: 1000 },
-  { type: 'click', target: '[data-testid="connect-button"]', delay: 2000 },
+  // Step 2: Wait for devices to appear and select the first one
+  { type: 'move', target: '[data-testid="device-row"]', delay: 4000 },
+  { type: 'click', target: '[data-testid="device-row"]', delay: 2000 },
   
-  // Type some commands
-  { type: 'move', target: '[data-testid="terminal-input"]', delay: 1000 },
-  { type: 'click', target: '[data-testid="terminal-input"]', delay: 500 },
-  { type: 'type', text: 'AT+VERSION', delay: 1000 },
-  { type: 'click', target: '[data-testid="send-button"]', delay: 1000 },
+  // Step 3: Connect to the selected device
+  { type: 'move', target: '[data-testid="connect-button"]', delay: 1500 },
+  { type: 'click', target: '[data-testid="connect-button"]', delay: 3000 },
   
-  { type: 'type', text: 'AT+STATUS', delay: 1000 },
-  { type: 'click', target: '[data-testid="send-button"]', delay: 1000 },
+  // Step 4: Send first command - AT+VERSION
+  { type: 'move', target: '[data-testid="terminal-input"]', delay: 2000 },
+  { type: 'click', target: '[data-testid="terminal-input"]', delay: 1000 },
+  { type: 'type', text: 'AT+VERSION', delay: 2000 },
+  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
   
-  // Subscribe to notifications
-  { type: 'move', target: '[data-testid="subscribe-button"]', delay: 1000 },
-  { type: 'click', target: '[data-testid="subscribe-button"]', delay: 2000 },
+  // Step 5: Send second command - AT+STATUS
+  { type: 'type', text: 'AT+STATUS', delay: 2000 },
+  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
   
-  // Clear console
-  { type: 'move', target: '[data-testid="clear-console-button"]', delay: 1000 },
-  { type: 'click', target: '[data-testid="clear-console-button"]', delay: 1000 },
+  // Step 6: Send third command - AT+INFO
+  { type: 'type', text: 'AT+INFO', delay: 2000 },
+  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
   
-  // Disconnect
-  { type: 'move', target: '[data-testid="disconnect-button"]', delay: 1000 },
-  { type: 'click', target: '[data-testid="disconnect-button"]', delay: 2000 },
+  // Step 7: Subscribe to notifications (click on a notify badge)
+  { type: 'move', target: '[data-testid="subscribe-button"]', delay: 2000 },
+  { type: 'click', target: '[data-testid="subscribe-button"]', delay: 3000 },
+  
+  // Step 8: Clear the console
+  { type: 'move', target: '[data-testid="clear-console-button"]', delay: 1500 },
+  { type: 'click', target: '[data-testid="clear-console-button"]', delay: 2000 },
+  
+  // Step 9: Send one more command after clearing
+  { type: 'move', target: '[data-testid="terminal-input"]', delay: 1500 },
+  { type: 'click', target: '[data-testid="terminal-input"]', delay: 1000 },
+  { type: 'type', text: 'HELLO WORLD', delay: 2000 },
+  { type: 'click', target: '[data-testid="send-button"]', delay: 2000 },
+  
+  // Step 10: Disconnect from the device
+  { type: 'move', target: '[data-testid="disconnect-button"]', delay: 2000 },
+  { type: 'click', target: '[data-testid="disconnect-button"]', delay: 3000 },
+  
+  // Final pause before restarting
+  { type: 'move', position: { x: 100, y: 100 }, delay: 2000 },
 ];
 
 export function useMouseSimulation() {
@@ -277,6 +294,18 @@ export function useMouseSimulation() {
     }
   }, [isElectron, config.enabled, userControlStatus, isActive, startSimulation]);
   
+  // Update config
+  const updateConfig = useCallback((newConfig: Partial<MouseSimulationConfig>) => {
+    setConfig(prev => ({ ...prev, ...newConfig }));
+  }, []);
+  
+  // Enable demo by default when in demo mode
+  useEffect(() => {
+    if (!isElectron && !config.enabled) {
+      updateConfig({ enabled: true });
+    }
+  }, [isElectron, config.enabled, updateConfig]);
+  
   // Toggle simulation (manual control)
   const toggleSimulation = useCallback(() => {
     if (userControlStatus === 'user') {
@@ -290,11 +319,6 @@ export function useMouseSimulation() {
       startSimulation();
     }
   }, [isActive, startSimulation, stopSimulation, userControlStatus]);
-  
-  // Update config
-  const updateConfig = useCallback((newConfig: Partial<MouseSimulationConfig>) => {
-    setConfig(prev => ({ ...prev, ...newConfig }));
-  }, []);
   
   // Cleanup on unmount
   useEffect(() => {
