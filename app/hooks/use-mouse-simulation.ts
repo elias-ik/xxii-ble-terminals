@@ -143,10 +143,38 @@ const DEFAULT_ACTIONS: MouseAction[] = [
       { type: 'do-nothing', delay: 100 },
     ]
   },
-  { type: 'move', id: 'move-to-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 800 },
-  { type: 'click', id: 'click-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 400 },
-  { type: 'move', id: 'move-to-read-model', target: '[data-testid="read-model-number"]', delay: 800 },
-  { type: 'click', id: 'click-read-model', target: '[data-testid="read-model-number"]', delay: 400 },
+  {
+    type: 'conditional',
+    id: 'maybe-select-read-manufacturer',
+    condition: () => {
+      const el = document.querySelector('[data-testid="read-manufacturer-name"]') as HTMLElement | null;
+      if (!el) return false;
+      const cls = (el.getAttribute('class') || '').toString();
+      const isSelected = cls.includes('bg-primary');
+      return !isSelected; // needs click only if not selected
+    },
+    actionsIfTrue: [
+      { type: 'move', id: 'move-to-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 800 },
+      { type: 'click', id: 'click-read-manufacturer', target: '[data-testid="read-manufacturer-name"]', delay: 400 },
+    ],
+    actionsIfFalse: []
+  },
+  {
+    type: 'conditional',
+    id: 'maybe-select-read-model',
+    condition: () => {
+      const el = document.querySelector('[data-testid="read-model-number"]') as HTMLElement | null;
+      if (!el) return false;
+      const cls = (el.getAttribute('class') || '').toString();
+      const isSelected = cls.includes('bg-primary');
+      return !isSelected; // needs click only if not selected
+    },
+    actionsIfTrue: [
+      { type: 'move', id: 'move-to-read-model', target: '[data-testid="read-model-number"]', delay: 800 },
+      { type: 'click', id: 'click-read-model', target: '[data-testid="read-model-number"]', delay: 400 },
+    ],
+    actionsIfFalse: []
+  },
 
   // Step 9: Close the dialog
   { type: 'move', id: 'move-to-dialog-close', target: '[data-testid="dialog-close-button"]', delay: 600 },
