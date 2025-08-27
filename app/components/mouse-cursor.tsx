@@ -12,7 +12,7 @@ export function MouseCursor({ position, visible, className }: MouseCursorProps) 
   
   useEffect(() => {
     if (cursorRef.current) {
-      cursorRef.current.style.transform = `translate(${position.x - 36}px, ${position.y - 36}px)`;
+      cursorRef.current.style.transform = `translate(${position.x}px, ${position.y}px)`;
     }
   }, [position]);
   
@@ -26,14 +26,16 @@ export function MouseCursor({ position, visible, className }: MouseCursorProps) 
         className
       )}
       style={{
-        transform: `translate(${position.x - 36}px, ${position.y - 36}px)`,
+        transform: `translate(${position.x}px, ${position.y}px)`,
       }}
     >
-      {/* Cursor pointer */}
-      <div className="w-0 h-0 border-l-[24px] border-l-foreground border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent" />
-      
-      {/* Cursor shadow */}
-      <div className="absolute top-[3px] left-[3px] w-0 h-0 border-l-[24px] border-l-muted-foreground/50 border-t-[12px] border-t-transparent border-b-[12px] border-b-transparent" />
+      {/* Apple-style cursor using the existing SVG */}
+      <img 
+        src="/cursor.svg" 
+        alt="cursor" 
+        className="w-6 h-6"
+        style={{ transform: 'scale(1.5)' }}
+      />
       
       {/* Click indicator */}
       <div className="absolute top-1/2 left-1/2 w-6 h-6 bg-primary rounded-full opacity-0 animate-ping" />
