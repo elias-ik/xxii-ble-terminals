@@ -94,6 +94,7 @@ export function useMouseSimulation() {
   const cursorRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
   const timeoutRef = useRef<NodeJS.Timeout>();
+  const hasStartedRef = useRef<boolean>(false);
   
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
@@ -247,6 +248,7 @@ export function useMouseSimulation() {
       timestamp: new Date().toISOString()
     });
     
+    hasStartedRef.current = true;
     setIsActive(true);
     setCurrentActionIndex(0);
     
@@ -292,6 +294,7 @@ export function useMouseSimulation() {
       timestamp: new Date().toISOString()
     });
     
+    hasStartedRef.current = false;
     setIsActive(false);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -356,11 +359,11 @@ export function useMouseSimulation() {
   
   // Auto-start simulation when in demo mode and control is with demo
   useEffect(() => {
-    if (!isElectron && config.enabled && userControlStatus === 'demo' && !isActive) {
+    if (!isElectron && config.enabled && userControlStatus === 'demo' && !isActive && !hasStartedRef.current) {
       console.log(`🚀 Demo: Auto-starting simulation (enabled: ${config.enabled}, control: ${userControlStatus}, active: ${isActive})`);
       startSimulation();
     }
-  }, [isElectron, config.enabled, userControlStatus, isActive, startSimulation]);
+  }, [isElectron, config.enabled, userControlStatus, isActive]);
   
   // Update config
   const updateConfig = useCallback((newConfig: Partial<MouseSimulationConfig>) => {
