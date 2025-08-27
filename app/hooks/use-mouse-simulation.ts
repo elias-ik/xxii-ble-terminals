@@ -95,6 +95,8 @@ export function useMouseSimulation() {
   const animationRef = useRef<number>();
   const timeoutRef = useRef<NodeJS.Timeout>();
   const hasStartedRef = useRef<boolean>(false);
+  const isActiveRef = useRef<boolean>(false);
+  const currentActionIndexRef = useRef<number>(0);
   
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
@@ -229,14 +231,50 @@ export function useMouseSimulation() {
     }
   }, [currentPosition, config.speed, findElement, getElementPosition, animateMouseMove]);
   
+  // Run next action - using refs to avoid closure issues
+  const runNextAction = useCallback(() => {
+    // Check if we should stop using refs
+    if (!isActiveRef.current || userControlStatus === 'user') {
+      console.log(`🛑 Demo: Stopping action execution`, {
+        isActive: isActiveRef.current,
+        userControlStatus,
+        reason: !isActiveRef.current ? 'simulation stopped' : 'user has control'
+      });
+      return;
+    }
+    
+    if (currentActionIndexRef.current >= config.actions.length) {
+      if (config.loop) {
+        console.log(`🔄 Demo: Restarting simulation loop (action ${currentActionIndexRef.current}/${config.actions.length})`);
+        currentActionIndexRef.current = 0;
+        setCurrentActionIndex(0);
+      } else {
+        console.log(`🏁 Demo: Simulation completed (no loop)`);
+        stopSimulation();
+        return;
+      }
+    }
+    
+    const action = config.actions[currentActionIndexRef.current];
+    console.log(`📋 Demo: Processing action ${currentActionIndexRef.current + 1}/${config.actions.length}`);
+    executeAction(action);
+    
+    const delay = (action.delay || 1000) * speedMultipliers[config.speed];
+    timeoutRef.current = setTimeout(() => {
+      currentActionIndexRef.current += 1;
+      setCurrentActionIndex(currentActionIndexRef.current);
+      runNextAction();
+    }, delay);
+  }, [userControlStatus, config.actions, config.loop, executeAction, speedMultipliers, config.speed, stopSimulation]);
+
   // Start the simulation
   const startSimulation = useCallback(() => {
-    if (!config.enabled || isActive || userControlStatus === 'user') {
+    if (!config.enabled || isActiveRef.current || userControlStatus === 'user') {
       console.log(`🚫 Demo: Cannot start simulation`, {
         enabled: config.enabled,
-        isActive,
+        isActive: isActiveRef.current,
         userControlStatus,
-        reason: !config.enabled ? 'not enabled' : isActive ? 'already active' : 'user has control'
+        reason: !config.enabled ? 'not enabled' : isActiveRef.current ? 'already active' : 'user has control'
       });
       return;
     }
@@ -249,52 +287,24 @@ export function useMouseSimulation() {
     });
     
     hasStartedRef.current = true;
+    isActiveRef.current = true;
+    currentActionIndexRef.current = 0;
     setIsActive(true);
     setCurrentActionIndex(0);
     
-    const runNextAction = () => {
-      if (!isActive || userControlStatus === 'user') {
-        console.log(`🛑 Demo: Stopping action execution`, {
-          isActive,
-          userControlStatus,
-          reason: !isActive ? 'simulation stopped' : 'user has control'
-        });
-        return;
-      }
-      
-      if (currentActionIndex >= config.actions.length) {
-        if (config.loop) {
-          console.log(`🔄 Demo: Restarting simulation loop (action ${currentActionIndex}/${config.actions.length})`);
-          setCurrentActionIndex(0);
-        } else {
-          console.log(`🏁 Demo: Simulation completed (no loop)`);
-          stopSimulation();
-          return;
-        }
-      }
-      
-      const action = config.actions[currentActionIndex];
-      console.log(`📋 Demo: Processing action ${currentActionIndex + 1}/${config.actions.length}`);
-      executeAction(action);
-      
-      const delay = (action.delay || 1000) * speedMultipliers[config.speed];
-      timeoutRef.current = setTimeout(() => {
-        setCurrentActionIndex(prev => prev + 1);
-        runNextAction();
-      }, delay);
-    };
-    
-    runNextAction();
-  }, [config, isActive, currentActionIndex, executeAction, userControlStatus]);
+    // Start the first action
+    setTimeout(() => runNextAction(), 100);
+  }, [config.enabled, userControlStatus, config.actions.length, config.speed, config.loop, runNextAction]);
   
   // Stop the simulation
   const stopSimulation = useCallback(() => {
     console.log(`⏹️ Demo: Stopping simulation`, {
-      wasActive: isActive,
+      wasActive: isActiveRef.current,
       timestamp: new Date().toISOString()
     });
     
     hasStartedRef.current = false;
+    isActiveRef.current = false;
     setIsActive(false);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -304,7 +314,7 @@ export function useMouseSimulation() {
       clearTimeout(timeoutRef.current);
       console.log(`⏰ Demo: Cleared timeout`);
     }
-  }, [isActive]);
+  }, []);
   
   // Handle postMessage events from parent window
   const handlePostMessage = useCallback((event: MessageEvent) => {
@@ -363,7 +373,7 @@ export function useMouseSimulation() {
       console.log(`🚀 Demo: Auto-starting simulation (enabled: ${config.enabled}, control: ${userControlStatus}, active: ${isActive})`);
       startSimulation();
     }
-  }, [isElectron, config.enabled, userControlStatus, isActive]);
+  }, [isElectron, config.enabled, userControlStatus, isActive, startSimulation]);
   
   // Update config
   const updateConfig = useCallback((newConfig: Partial<MouseSimulationConfig>) => {
