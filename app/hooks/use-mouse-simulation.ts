@@ -81,13 +81,39 @@ const DEFAULT_ACTIONS: MouseAction[] = [
   // Step 4: Wait 2 seconds
   { type: 'do-nothing', id: 'wait-2-seconds', delay: 2000 },
   
-  // Step 5: Click a device
-  { type: 'move', id: 'move-to-device', target: '[data-testid="device-row"]', delay: 1500 },
-  { type: 'click', id: 'click-device', target: '[data-testid="device-row"]', delay: 1000 },
+  // Step 5: Click a device (only if devices are available)
+  {
+    type: 'conditional',
+    id: 'check-devices-available',
+    condition: () => {
+      const deviceRows = document.querySelectorAll('[data-testid="device-row"]');
+      return deviceRows.length > 0;
+    },
+    actionsIfTrue: [
+      { type: 'move', id: 'move-to-device', target: '[data-testid="device-row"]', delay: 1500 },
+      { type: 'click', id: 'click-device', target: '[data-testid="device-row"]', delay: 1000 },
+    ],
+    actionsIfFalse: [
+      { type: 'do-nothing', id: 'no-devices-wait', delay: 2000 },
+    ]
+  },
   
-  // Step 6: Click connect
-  { type: 'move', id: 'move-to-connect', target: '[data-testid="connect-button"]', delay: 1500 },
-  { type: 'click', id: 'click-connect', target: '[data-testid="connect-button"]', delay: 3000 },
+  // Step 6: Click connect (only if connect button exists)
+  {
+    type: 'conditional',
+    id: 'check-connect-button',
+    condition: () => {
+      const connectButton = document.querySelector('[data-testid="connect-button"]');
+      return !!(connectButton && connectButton instanceof HTMLElement);
+    },
+    actionsIfTrue: [
+      { type: 'move', id: 'move-to-connect', target: '[data-testid="connect-button"]', delay: 1500 },
+      { type: 'click', id: 'click-connect', target: '[data-testid="connect-button"]', delay: 3000 },
+    ],
+    actionsIfFalse: [
+      { type: 'do-nothing', id: 'no-connect-button-wait', delay: 2000 },
+    ]
+  },
   
   // Room for more actions...
   { type: 'do-nothing', id: 'final-pause', delay: 2000 },
@@ -118,23 +144,6 @@ export function useMouseSimulation() {
 
   // We don't actually need these functions for the simulation, but keeping for future use
   // const { scan, connect, disconnect, write, subscribe, clearConsole } = useBLEStore();
-
-  // Helper functions to check current state
-  const isConnected = useCallback(() => {
-    const disconnectButton = document.querySelector('[data-testid="disconnect-button"]');
-    return !!(disconnectButton && disconnectButton instanceof HTMLElement && disconnectButton.offsetParent !== null);
-  }, []);
-
-  const isScanning = useCallback(() => {
-    const scanButton = document.querySelector('[data-testid="scan-button"]');
-    return !!(scanButton && scanButton instanceof HTMLElement && 
-           (scanButton.textContent?.includes('Stop') || scanButton.textContent?.includes('Scanning')));
-  }, []);
-
-  const hasDevices = useCallback(() => {
-    const deviceRows = document.querySelectorAll('[data-testid="device-row"]');
-    return deviceRows.length > 0;
-  }, []);
 
   // Speed multipliers
   const speedMultipliers = {
@@ -366,7 +375,11 @@ export function useMouseSimulation() {
     // Move to next action immediately after current action completes
     currentActionIndexRef.current += 1;
     setCurrentActionIndex(currentActionIndexRef.current);
-    runNextAction();
+    
+    // Use setTimeout to avoid stack overflow with recursive calls
+    setTimeout(() => {
+      runNextAction();
+    }, 0);
   }, [userControlStatus, config.actions, config.loop, executeAction]);
 
   // Start the simulation
