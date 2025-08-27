@@ -321,6 +321,13 @@ export function useMouseSimulation() {
             console.warn(`⚠️ Demo: Element not found for click target "${action.target}"`);
           }
         }
+        
+        // Add 5 second delay for debugging
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 5000);
+        });
         break;
         
       case 'type':
@@ -344,6 +351,92 @@ export function useMouseSimulation() {
             console.warn(`⚠️ Demo: Element not found for type target "${action.target}"`);
           }
         }
+        
+        // Add 5 second delay for debugging
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 5000);
+        });
+        break;
+        
+      case 'do-nothing':
+        // Just wait for the specified delay
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, actualDelay);
+        });
+        
+        // Add 5 second delay for debugging
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 5000);
+        });
+        break;
+        
+      case 'conditional':
+        if (action.condition) {
+          const conditionResult = action.condition();
+          
+          const actionsToExecute = conditionResult ? action.actionsIfTrue : action.actionsIfFalse;
+          if (actionsToExecute && actionsToExecute.length > 0) {
+            // Execute all actions in the conditional branch
+            for (let i = 0; i < actionsToExecute.length; i++) {
+              const conditionalAction = actionsToExecute[i];
+              
+              // Execute the conditional action directly (it handles its own delays)
+              await executeAction(conditionalAction);
+            }
+          }
+        } else {
+          console.warn(`⚠️ Demo: Conditional action has no condition function`);
+        }
+        
+        // Add 5 second delay for debugging
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 5000);
+        });
+        break;
+        
+      case 'while':
+        if (action.whileCondition && action.whileActions) {
+          let iterationCount = 0;
+          const maxIterations = 100; // Prevent infinite loops
+          
+          while (action.whileCondition() && iterationCount < maxIterations) {
+            iterationCount++;
+            
+            // Execute all actions in the while loop
+            for (let i = 0; i < action.whileActions.length; i++) {
+              const whileAction = action.whileActions[i];
+              
+              // Execute the while action directly (it handles its own delays)
+              await executeAction(whileAction);
+            }
+            
+            // Check condition again after executing all actions
+            if (!action.whileCondition()) {
+              break;
+            }
+          }
+          
+          if (iterationCount >= maxIterations) {
+            console.warn(`⚠️ Demo: While loop reached maximum iterations (${maxIterations}), stopping`);
+          }
+        } else {
+          console.warn(`⚠️ Demo: While action has no condition or actions`);
+        }
+        
+        // Add 5 second delay for debugging
+        await new Promise<void>((resolve) => {
+          setTimeout(() => {
+            resolve();
+          }, 5000);
+        });
         break;
         
       case 'scroll':
