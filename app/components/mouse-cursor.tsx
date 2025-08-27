@@ -22,7 +22,7 @@ export function MouseCursor({ position, visible, className }: MouseCursorProps) 
     <div
       ref={cursorRef}
       className={cn(
-        "fixed top-0 left-0 w-18 h-18 pointer-events-none z-[9999] transition-transform duration-75 ease-out",
+        "fixed top-0 left-0 w-18 h-18 pointer-events-none z-[9999]",
         className
       )}
       style={{
