@@ -344,7 +344,7 @@ export function useMouseSimulation() {
   }, [config.speed, findElement, getElementPosition, animateMouseMove]);
   
   // Run next action - using refs to avoid closure issues
-  const runNextAction = useCallback(() => {
+  const runNextAction = useCallback(async () => {
     // Check if we should stop using refs
     if (!isActiveRef.current || userControlStatus === 'user') {
       return;
@@ -361,15 +361,13 @@ export function useMouseSimulation() {
     }
     
     const action = config.actions[currentActionIndexRef.current];
-    executeAction(action);
+    await executeAction(action); // Wait for action to complete
     
-    const delay = (action.delay || 1000) * speedMultipliers[config.speed];
-    timeoutRef.current = setTimeout(() => {
-      currentActionIndexRef.current += 1;
-      setCurrentActionIndex(currentActionIndexRef.current);
-      runNextAction();
-    }, delay);
-  }, [userControlStatus, config.actions, config.loop, executeAction, config.speed]);
+    // Move to next action immediately after current action completes
+    currentActionIndexRef.current += 1;
+    setCurrentActionIndex(currentActionIndexRef.current);
+    runNextAction();
+  }, [userControlStatus, config.actions, config.loop, executeAction]);
 
   // Start the simulation
   const startSimulation = useCallback(() => {
@@ -391,7 +389,7 @@ export function useMouseSimulation() {
     setCurrentActionIndex(0);
     
     // Start the first action
-    setTimeout(() => runNextAction(), 100);
+    runNextAction();
   }, [config.enabled, userControlStatus, config.actions.length, config.speed, config.loop, runNextAction]);
   
   // Stop the simulation
