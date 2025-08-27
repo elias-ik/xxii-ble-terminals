@@ -40,9 +40,8 @@ const DEFAULT_ACTIONS: MouseAction[] = [
     type: 'while',
     id: 'wait-for-scanning-to-finish',
     whileCondition: () => {
-      const scanButton = document.querySelector('[data-testid="scan-button"]');
-      return !!(scanButton && scanButton instanceof HTMLElement && 
-             (scanButton.textContent?.includes('Stop') || scanButton.textContent?.includes('Scanning')));
+      const scanButton = document.querySelector('[data-testid="scan-button"]') as HTMLButtonElement;
+      return !!(scanButton && scanButton.disabled);
     },
     whileActions: [
       { type: 'do-nothing', delay: 1000 }, // Wait 1 second, then check again
@@ -55,9 +54,7 @@ const DEFAULT_ACTIONS: MouseAction[] = [
     id: 'wait-for-rescan-button',
     whileCondition: () => {
       const scanButton = document.querySelector('[data-testid="scan-button"]') as HTMLButtonElement;
-      return !(scanButton && scanButton instanceof HTMLButtonElement && 
-             scanButton.textContent?.includes('Rescan') && 
-             !scanButton.disabled);
+      return !(scanButton && !scanButton.disabled && scanButton.textContent?.includes('Rescan'));
     },
     whileActions: [
       { type: 'do-nothing', delay: 100 },
