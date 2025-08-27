@@ -161,33 +161,38 @@ export function useMouseSimulation() {
   }, []);
 
   // Animate mouse movement
-  const animateMouseMove = useCallback((from: MousePosition, to: MousePosition, duration: number) => {
-    const startTime = performance.now();
-    const startX = from.x;
-    const startY = from.y;
-    const deltaX = to.x - from.x;
-    const deltaY = to.y - from.y;
-    
-    const animate = (currentTime: number) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+  const animateMouseMove = useCallback((from: MousePosition, to: MousePosition, duration: number): Promise<void> => {
+    return new Promise((resolve) => {
+      const startTime = performance.now();
+      const startX = from.x;
+      const startY = from.y;
+      const deltaX = to.x - from.x;
+      const deltaY = to.y - from.y;
       
-      // Easing function (ease-out)
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function (ease-out)
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        
+        const x = startX + deltaX * easeProgress;
+        const y = startY + deltaY * easeProgress;
+        
+        const newPosition = { x, y };
+        setCurrentPosition(newPosition);
+        currentPositionRef.current = newPosition;
+        
+        if (progress < 1) {
+          animationRef.current = requestAnimationFrame(animate);
+        } else {
+          // Animation completed
+          resolve();
+        }
+      };
       
-      const x = startX + deltaX * easeProgress;
-      const y = startY + deltaY * easeProgress;
-      
-      const newPosition = { x, y };
-      setCurrentPosition(newPosition);
-      currentPositionRef.current = newPosition;
-      
-      if (progress < 1) {
-        animationRef.current = requestAnimationFrame(animate);
-      }
-    };
-    
-    animationRef.current = requestAnimationFrame(animate);
+      animationRef.current = requestAnimationFrame(animate);
+    });
   }, []);
 
   // Execute a mouse action
@@ -283,17 +288,17 @@ export function useMouseSimulation() {
           const element = findElement(action.target);
           if (element) {
             const targetPos = getElementPosition(element);
-            animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+            await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
           }
         } else if (action.position) {
-          animateMouseMove(currentPositionRef.current, action.position, actualDelay);
+          await animateMouseMove(currentPositionRef.current, action.position, actualDelay);
         }
         
-        // Add 5 second delay for debugging
+        // Wait for animation to complete, then add 5 second delay for debugging
         await new Promise<void>((resolve) => {
           setTimeout(() => {
             resolve();
-          }, 5000);
+          }, actualDelay + 5000);
         });
         break;
         
@@ -304,7 +309,7 @@ export function useMouseSimulation() {
             const targetPos = getElementPosition(element);
             
             // Move to position first, then click
-            animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+            await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
             
             // Simulate click after movement
             setTimeout(() => {
@@ -321,7 +326,7 @@ export function useMouseSimulation() {
             const targetPos = getElementPosition(element);
             
             // Move to position first, then type
-            animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
+            await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
             
             setTimeout(() => {
               element.focus();
