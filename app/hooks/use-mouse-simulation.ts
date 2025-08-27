@@ -311,10 +311,13 @@ export function useMouseSimulation() {
             // Move to position first, then click
             await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
             
-            // Simulate click after movement
-            setTimeout(() => {
-              element.click();
-            }, actualDelay);
+            // Simulate click after movement completes
+            await new Promise<void>((resolve) => {
+              setTimeout(() => {
+                element.click();
+                resolve();
+              }, actualDelay);
+            });
           }
         }
         break;
@@ -328,11 +331,14 @@ export function useMouseSimulation() {
             // Move to position first, then type
             await animateMouseMove(currentPositionRef.current, targetPos, actualDelay);
             
-            setTimeout(() => {
-              element.focus();
-              element.value = action.text!;
-              element.dispatchEvent(new Event('input', { bubbles: true }));
-            }, actualDelay);
+            await new Promise<void>((resolve) => {
+              setTimeout(() => {
+                element.focus();
+                element.value = action.text!;
+                element.dispatchEvent(new Event('input', { bubbles: true }));
+                resolve();
+              }, actualDelay);
+            });
           }
         }
         break;
