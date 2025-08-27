@@ -282,7 +282,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                 return false;
               })();
               return hasAny ? (
-                <Button size="sm" variant="outline" className="bg-white text-foreground" onClick={() => setEditorOpen(true)}>
+                <Button size="sm" variant="outline" className="bg-white text-foreground" onClick={() => setEditorOpen(true)} data-testid="edit-active-characteristics-button">
                   <Pencil className="h-4 w-4 mr-2" /> Edit
                 </Button>
               ) : null;
@@ -354,7 +354,7 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
               if (rows.length === 0) {
                 return (
                   <div className="flex justify-center py-2">
-                    <Button size="sm" variant="outline" className="bg-white text-foreground" onClick={() => setEditorOpen(true)}>
+                    <Button size="sm" variant="outline" className="bg-white text-foreground" onClick={() => setEditorOpen(true)} data-testid="edit-active-characteristics-button">
                       <Pencil className="h-4 w-4 mr-2" /> Edit
                     </Button>
                   </div>

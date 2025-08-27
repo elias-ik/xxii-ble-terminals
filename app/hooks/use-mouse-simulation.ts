@@ -120,13 +120,12 @@ const DEFAULT_ACTIONS: MouseAction[] = [
     type: 'conditional',
     id: 'open-active-characteristics-editor',
     condition: () => {
-      // Target the Pencil icon used by both Edit buttons in Active Characteristics
-      const pencilIcon = document.querySelector('svg.lucide-pencil');
-      return !!(pencilIcon && pencilIcon instanceof SVGElement && pencilIcon.closest('button'));
+      const editButton = document.querySelector('[data-testid="edit-active-characteristics-button"]');
+      return !!(editButton && editButton instanceof HTMLElement);
     },
     actionsIfTrue: [
-      { type: 'move', id: 'move-to-edit-active-characteristics', target: 'svg.lucide-pencil', delay: 1200 },
-      { type: 'click', id: 'click-edit-active-characteristics', target: 'svg.lucide-pencil', delay: 800 },
+      { type: 'move', id: 'move-to-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 1200 },
+      { type: 'click', id: 'click-edit-active-characteristics', target: '[data-testid="edit-active-characteristics-button"]', delay: 800 },
     ],
     actionsIfFalse: [
       { type: 'do-nothing', id: 'no-edit-button-found-wait', delay: 1000 },
