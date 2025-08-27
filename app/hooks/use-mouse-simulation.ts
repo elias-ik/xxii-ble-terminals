@@ -44,28 +44,15 @@ const DEFAULT_ACTIONS: MouseAction[] = [
       return !!(scanButton && scanButton.disabled);
     },
     whileActions: [
-      { type: 'do-nothing', delay: 1000 }, // Wait 1 second, then check again
+      { type: 'do-nothing', delay: 100 }, // Wait 100ms, then check again
     ]
   },
   
-  // Step 2: Wait until the rescan button is clickable again using while loop
-  {
-    type: 'while',
-    id: 'wait-for-rescan-button',
-    whileCondition: () => {
-      const scanButton = document.querySelector('[data-testid="scan-button"]') as HTMLButtonElement;
-      return !(scanButton && !scanButton.disabled && scanButton.textContent?.includes('Rescan'));
-    },
-    whileActions: [
-      { type: 'do-nothing', delay: 100 },
-    ]
-  },
-  
-  // Step 3: Click rescan
+  // Step 2: Click rescan
   { type: 'move', id: 'move-to-rescan', target: '[data-testid="scan-button"]', delay: 1500 },
   { type: 'click', id: 'click-rescan', target: '[data-testid="scan-button"]', delay: 2000 },
   
-  // Step 4: Condition - if popup appears "You will be disconnected from all BLE devices. Continue?" then click yes otherwise do nothing
+  // Step 3: Condition - if popup appears "You will be disconnected from all BLE devices. Continue?" then click yes otherwise do nothing
   {
     type: 'conditional',
     id: 'handle-disconnect-popup',
@@ -93,14 +80,14 @@ const DEFAULT_ACTIONS: MouseAction[] = [
     ]
   },
   
-  // Step 5: Wait 2 seconds
+  // Step 4: Wait 2 seconds
   { type: 'do-nothing', id: 'wait-2-seconds', delay: 2000 },
   
-  // Step 6: Click a device
+  // Step 5: Click a device
   { type: 'move', id: 'move-to-device', target: '[data-testid="device-row"]', delay: 1500 },
   { type: 'click', id: 'click-device', target: '[data-testid="device-row"]', delay: 1000 },
   
-  // Step 7: Click connect
+  // Step 6: Click connect
   { type: 'move', id: 'move-to-connect', target: '[data-testid="connect-button"]', delay: 1500 },
   { type: 'click', id: 'click-connect', target: '[data-testid="connect-button"]', delay: 3000 },
   
