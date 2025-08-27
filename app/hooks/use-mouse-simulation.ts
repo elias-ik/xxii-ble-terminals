@@ -155,16 +155,28 @@ export function useMouseSimulation() {
     const baseDelay = action.delay || 1000;
     const actualDelay = baseDelay * speedMultipliers[config.speed];
     
+    console.log(`🎯 Demo: Executing action [${action.type}]`, {
+      target: action.target,
+      position: action.position,
+      text: action.text,
+      delay: `${baseDelay}ms → ${actualDelay}ms (${config.speed} speed)`,
+      timestamp: new Date().toISOString()
+    });
+    
     switch (action.type) {
       case 'move':
         if (action.target) {
           const element = findElement(action.target);
           if (element) {
             const targetPos = getElementPosition(element);
+            console.log(`🖱️ Demo: Moving to element "${action.target}" at position (${targetPos.x}, ${targetPos.y})`);
             animateMouseMove(currentPosition, targetPos, actualDelay);
             setCurrentPosition(targetPos);
+          } else {
+            console.warn(`⚠️ Demo: Element not found for target "${action.target}"`);
           }
         } else if (action.position) {
+          console.log(`🖱️ Demo: Moving to absolute position (${action.position.x}, ${action.position.y})`);
           animateMouseMove(currentPosition, action.position, actualDelay);
           setCurrentPosition(action.position);
         }
@@ -176,11 +188,15 @@ export function useMouseSimulation() {
           if (element) {
             const targetPos = getElementPosition(element);
             setCurrentPosition(targetPos);
+            console.log(`👆 Demo: Clicking element "${action.target}" at (${targetPos.x}, ${targetPos.y})`);
             
             // Simulate click after movement
             setTimeout(() => {
+              console.log(`✅ Demo: Executing click on "${action.target}"`);
               element.click();
             }, actualDelay);
+          } else {
+            console.warn(`⚠️ Demo: Cannot click - element not found for target "${action.target}"`);
           }
         }
         break;
@@ -191,17 +207,22 @@ export function useMouseSimulation() {
           if (element) {
             const targetPos = getElementPosition(element);
             setCurrentPosition(targetPos);
+            console.log(`⌨️ Demo: Typing "${action.text}" into "${action.target}" at (${targetPos.x}, ${targetPos.y})`);
             
             setTimeout(() => {
+              console.log(`✅ Demo: Executing type "${action.text}" into "${action.target}"`);
               element.focus();
               element.value = action.text!;
               element.dispatchEvent(new Event('input', { bubbles: true }));
             }, actualDelay);
+          } else {
+            console.warn(`⚠️ Demo: Cannot type - element not found for target "${action.target}"`);
           }
         }
         break;
         
       case 'scroll':
+        console.log(`📜 Demo: Scroll action (not implemented)`);
         // Implement scroll simulation if needed
         break;
     }
@@ -209,24 +230,49 @@ export function useMouseSimulation() {
   
   // Start the simulation
   const startSimulation = useCallback(() => {
-    if (!config.enabled || isActive || userControlStatus === 'user') return;
+    if (!config.enabled || isActive || userControlStatus === 'user') {
+      console.log(`🚫 Demo: Cannot start simulation`, {
+        enabled: config.enabled,
+        isActive,
+        userControlStatus,
+        reason: !config.enabled ? 'not enabled' : isActive ? 'already active' : 'user has control'
+      });
+      return;
+    }
+    
+    console.log(`🚀 Demo: Starting simulation`, {
+      totalActions: config.actions.length,
+      speed: config.speed,
+      loop: config.loop,
+      timestamp: new Date().toISOString()
+    });
     
     setIsActive(true);
     setCurrentActionIndex(0);
     
     const runNextAction = () => {
-      if (!isActive || userControlStatus === 'user') return;
+      if (!isActive || userControlStatus === 'user') {
+        console.log(`🛑 Demo: Stopping action execution`, {
+          isActive,
+          userControlStatus,
+          reason: !isActive ? 'simulation stopped' : 'user has control'
+        });
+        return;
+      }
       
       if (currentActionIndex >= config.actions.length) {
         if (config.loop) {
+          console.log(`🔄 Demo: Restarting simulation loop (action ${currentActionIndex}/${config.actions.length})`);
           setCurrentActionIndex(0);
         } else {
+          console.log(`🏁 Demo: Simulation completed (no loop)`);
           stopSimulation();
           return;
         }
       }
       
       const action = config.actions[currentActionIndex];
+      console.log(`📋 Demo: Processing action ${currentActionIndex + 1}/${config.actions.length}`);
       executeAction(action);
       
       const delay = (action.delay || 1000) * speedMultipliers[config.speed];
@@ -241,19 +287,33 @@ export function useMouseSimulation() {
   
   // Stop the simulation
   const stopSimulation = useCallback(() => {
+    console.log(`⏹️ Demo: Stopping simulation`, {
+      wasActive: isActive,
+      timestamp: new Date().toISOString()
+    });
+    
     setIsActive(false);
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
+      console.log(`🎬 Demo: Cancelled animation frame`);
     }
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
+      console.log(`⏰ Demo: Cleared timeout`);
     }
-  }, []);
+  }, [isActive]);
   
   // Handle postMessage events from parent window
   const handlePostMessage = useCallback((event: MessageEvent) => {
     // Only handle messages in demo mode (not Electron)
     if (isElectron) return;
+    
+    console.log(`📨 Demo: Received postMessage`, {
+      type: event.data?.type,
+      data: event.data?.data,
+      origin: event.origin,
+      timestamp: new Date().toISOString()
+    });
     
     // Verify the message structure
     if (event.data && typeof event.data === 'object' && event.data.type === 'user-control-status') {
@@ -261,18 +321,25 @@ export function useMouseSimulation() {
       
       if (control === 'user') {
         // User is taking over - stop demo
-        console.log('Demo: User taking control, stopping simulation');
+        console.log(`👤 Demo: User taking control, stopping simulation`);
         setUserControlStatus('user');
         stopSimulation();
       } else if (control === 'demo') {
         // User handing control back to demo
-        console.log('Demo: User handing control back, resuming simulation');
+        console.log(`🤖 Demo: User handing control back, resuming simulation`);
         setUserControlStatus('demo');
         // Auto-start simulation when control is handed back
         if (config.enabled) {
+          console.log(`🔄 Demo: Auto-starting simulation after control handback`);
           startSimulation();
+        } else {
+          console.log(`⚠️ Demo: Cannot auto-start - simulation not enabled`);
         }
+      } else {
+        console.warn(`⚠️ Demo: Unknown control status "${control}"`);
       }
+    } else {
+      console.log(`📨 Demo: Ignoring non-control message`);
     }
   }, [isElectron, stopSimulation, config.enabled, startSimulation]);
   
@@ -290,6 +357,7 @@ export function useMouseSimulation() {
   // Auto-start simulation when in demo mode and control is with demo
   useEffect(() => {
     if (!isElectron && config.enabled && userControlStatus === 'demo' && !isActive) {
+      console.log(`🚀 Demo: Auto-starting simulation (enabled: ${config.enabled}, control: ${userControlStatus}, active: ${isActive})`);
       startSimulation();
     }
   }, [isElectron, config.enabled, userControlStatus, isActive, startSimulation]);
@@ -302,6 +370,7 @@ export function useMouseSimulation() {
   // Enable demo by default when in demo mode
   useEffect(() => {
     if (!isElectron && !config.enabled) {
+      console.log(`🔧 Demo: Auto-enabling simulation in demo mode`);
       updateConfig({ enabled: true });
     }
   }, [isElectron, config.enabled, updateConfig]);
