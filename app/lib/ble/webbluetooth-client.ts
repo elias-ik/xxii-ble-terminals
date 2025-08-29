@@ -1,6 +1,23 @@
 import type { BLEClient, BLEEventMap } from './client';
 import type { Connection, Service, Characteristic } from '@/lib/ble-store';
 
+// TypeScript declarations for Web Bluetooth APIs
+declare global {
+  interface Navigator {
+    bluetooth?: {
+      requestLEScan(options: {
+        acceptAllAdvertisements?: boolean;
+        keepRepeatedDevices?: boolean;
+        scanMode?: 'lowLatency' | 'balanced' | 'lowPower';
+      }): Promise<void>;
+      stopLEScan(): Promise<void>;
+      addEventListener(type: 'advertisementreceived', listener: (event: any) => void): void;
+      addEventListener(type: 'lescanstop', listener: () => void): void;
+      removeEventListener(type: string, listener: any): void;
+    };
+  }
+}
+
 type Handler<K extends keyof BLEEventMap> = (payload: BLEEventMap[K]) => void;
 
 class Emitter {
@@ -27,6 +44,18 @@ const log = {
   warn: (...args: any[]) => console.warn('[WebBLE]', ...args),
   error: (...args: any[]) => console.error('[WebBLE]', ...args),
 };
+
+// Diagnostic logging to identify execution environment
+log.info('Web Bluetooth Client Environment Check:', {
+  isRenderer: typeof window !== 'undefined',
+  isNode: typeof process !== 'undefined' && process.versions && process.versions.node,
+  hasNavigator: typeof navigator !== 'undefined',
+  hasBluetooth: typeof navigator !== 'undefined' && !!navigator.bluetooth,
+  userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+  platform: typeof process !== 'undefined' ? process.platform : 'N/A',
+  electron: typeof process !== 'undefined' && process.versions && process.versions.electron ? 'Yes' : 'No',
+  context: typeof window !== 'undefined' ? 'Renderer' : 'Node.js Backend'
+});
 
 // Simple in-memory subscription map for notifications
 const subscriptions = new Map<string, () => void>();
@@ -167,14 +196,20 @@ export const webBluetoothClient: BLEClient = {
       }, 1000);
 
       // Start the actual BLE scan
-      await navigator.bluetooth.requestLEScan({
+      if (!navigator.bluetooth) {
+        throw new Error('Web Bluetooth not available');
+      }
+      
+      const bluetooth = navigator.bluetooth;
+      
+      await bluetooth.requestLEScan({
         acceptAllAdvertisements: true,
         keepRepeatedDevices: false,
         scanMode: 'lowLatency'
       });
 
       // Listen for advertisement events
-      navigator.bluetooth.addEventListener('advertisementreceived', (event) => {
+      bluetooth.addEventListener('advertisementreceived', (event) => {
         const device = event.device;
         const id = device.id || device.name || String(Math.random());
         
@@ -205,7 +240,7 @@ export const webBluetoothClient: BLEClient = {
       });
 
       // Listen for scan stop events
-      navigator.bluetooth.addEventListener('lescanstop', () => {
+      bluetooth.addEventListener('lescanstop', () => {
         clearInterval(idleTimer);
         clearTimeout(scanTimeout);
         emitter.emit('scanStatus', { status: 'completed', deviceCount: seen.size });
