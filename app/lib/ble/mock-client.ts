@@ -159,7 +159,7 @@ export const mockBLEClient: BLEClient = {
         { id: 'device-020', name: 'Smart Scale Omicron', address: 'CC:DD:EE:FF:00:11', rssi: -51, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
         { id: 'device-021', name: 'Bluetooth Headphones', address: 'DD:EE:FF:00:11:22', rssi: -44, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
         { id: 'device-022', name: 'Wireless Mouse', address: 'EE:FF:00:11:22:33', rssi: -37, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
-        { id: 'device-023', name: 'Keyboard Pro', address: 'FF:00:11:22:33:44', rssi: -33, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
+        { id: 'device-023', name: 'Keyboard Pro', address: 'FF:00:11:22:33:44', rssi: -50, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
         { id: 'device-024', name: 'Game Controller', address: '00:11:22:33:44:55', rssi: -46, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const },
         { id: 'device-025', name: 'Smart Mirror', address: '11:22:33:44:55:66', rssi: -68, connected: false, lastSeen: new Date(), previouslyConnected: false, connectionStatus: 'disconnected' as const }
       ];
@@ -176,6 +176,11 @@ export const mockBLEClient: BLEClient = {
       // Complete scan after all devices are discovered
       setTimeout(() => emitter.emit('scanStatus', { status: 'completed', deviceCount: devices.length }), totalScanTime + 1000);
     }, 200);
+  },
+
+  async stopScan() {
+    // Mock implementation - just emit completed status
+    emitter.emit('scanStatus', { status: 'completed', deviceCount: 0 });
   },
   async connect(deviceId: string) {
     emitter.emit('connectionChanged', { deviceId, state: 'connecting' });

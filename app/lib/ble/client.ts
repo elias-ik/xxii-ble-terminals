@@ -21,6 +21,7 @@ export interface BLEClient {
   off<K extends keyof BLEEventMap>(event: K, handler: (payload: BLEEventMap[K]) => void): void;
 
   scan(): Promise<void>;
+  stopScan(): Promise<void>;
   connect(deviceId: string): Promise<void>;
   disconnect(deviceId: string): Promise<void>;
   read(deviceId: string, serviceId: string, characteristicId: string): Promise<void>;

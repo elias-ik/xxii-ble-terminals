@@ -124,68 +124,106 @@ export const webBluetoothClient: BLEClient = {
   async scan() {
     try {
       emitter.emit('scanStatus', { status: 'scanning' });
-      const Bluetooth = await getBluetoothCtor();
+      
+      // Check if Web Bluetooth is available
+      if (!navigator.bluetooth) {
+        throw new Error('Web Bluetooth not supported in this browser');
+      }
 
       const seen = new Set<string>();
       let lastFoundAt = Date.now();
-      let keepGoing = true;
-      const idleLimitMs = 10000;
-      const maxTotalMs = 60000;
+      const maxScanTime = 30000; // 30 seconds max scan time
+      const idleTimeout = 5000; // 5 seconds of no new devices
       const startedAt = Date.now();
-
-      const runOnce = async () => {
-        const bt = new Bluetooth({
-          allowAllDevices: true,
-          scanTime: 2, // short burst; we loop until idle window
-          deviceFound: (device: any, selectFn: () => void) => {
-            const id = device?.id || device?.address || device?.name || String(Math.random());
-            if (!seen.has(id)) {
-              const rawName = device?.name || 'Generic BLE Device';
-              const unsupportedRegex = /Unknown or Unsupported Device (.*)/;
-              const deviceName = unsupportedRegex.test(device?.name ?? '') ? 'Unsupported' : rawName;
-              // Cache the full device object for later connect()
-              discoveredDevices.set(id, device);
-              seen.add(id);
-              lastFoundAt = Date.now();
-              // Suppress scan logs to reduce noise
-              const rssi: number = (device as any)?._adData?.rssi ?? -100;
-              emitter.emit('deviceDiscovered', {
-                id,
-                name: deviceName,
-                address: id,
-                rssi,
-                connected: false,
-                lastSeen: new Date(),
-                previouslyConnected: false,
-                connectionStatus: 'disconnected'
-              } as any);
-            }
-            // Immediately resolve this requestDevice burst so the loop can evaluate idle time
-            try { selectFn(); } catch {}
-            return true;
-          }
-        } as any);
-        try {
-          // Will scan and invoke deviceFound; request with no optionalServices to avoid service access limits
-          await (bt as any).requestDevice({ acceptAllDevices: true, optionalServices: [] });
-        } catch (e) {
-          // expected if no selection occurs; ignore
-        }
-      };
-
-      while (keepGoing) {
-        await runOnce();
-        const idleMs = Date.now() - lastFoundAt;
-        const totalMs = Date.now() - startedAt;
-        if (idleMs >= idleLimitMs || totalMs >= maxTotalMs) {
-          keepGoing = false;
-        }
+      
+      // Clear any existing scan
+      try {
+        await navigator.bluetooth.stopLEScan();
+      } catch (e) {
+        // Ignore if no scan was running
       }
 
-      emitter.emit('scanStatus', { status: 'completed', deviceCount: seen.size });
+      // Set up scan timeout
+      const scanTimeout = setTimeout(() => {
+        try {
+          navigator.bluetooth.stopLEScan();
+        } catch (e) {
+          // Ignore
+        }
+      }, maxScanTime);
+
+      // Set up idle timeout
+      const idleTimer = setInterval(() => {
+        const idleMs = Date.now() - lastFoundAt;
+        if (idleMs >= idleTimeout) {
+          clearInterval(idleTimer);
+          clearTimeout(scanTimeout);
+          try {
+            navigator.bluetooth.stopLEScan();
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }, 1000);
+
+      // Start the actual BLE scan
+      await navigator.bluetooth.requestLEScan({
+        acceptAllAdvertisements: true,
+        keepRepeatedDevices: false,
+        scanMode: 'lowLatency'
+      });
+
+      // Listen for advertisement events
+      navigator.bluetooth.addEventListener('advertisementreceived', (event) => {
+        const device = event.device;
+        const id = device.id || device.name || String(Math.random());
+        
+        if (!seen.has(id)) {
+          const rawName = device.name || 'Generic BLE Device';
+          const unsupportedRegex = /Unknown or Unsupported Device (.*)/;
+          const deviceName = unsupportedRegex.test(device.name ?? '') ? 'Unsupported' : rawName;
+          
+          // Cache the device for later connection
+          discoveredDevices.set(id, device);
+          seen.add(id);
+          lastFoundAt = Date.now();
+          
+          // Extract RSSI from advertisement data
+          const rssi = event.rssi ?? -100;
+          
+          emitter.emit('deviceDiscovered', {
+            id,
+            name: deviceName,
+            address: id,
+            rssi,
+            connected: false,
+            lastSeen: new Date(),
+            previouslyConnected: false,
+            connectionStatus: 'disconnected'
+          } as any);
+        }
+      });
+
+      // Listen for scan stop events
+      navigator.bluetooth.addEventListener('lescanstop', () => {
+        clearInterval(idleTimer);
+        clearTimeout(scanTimeout);
+        emitter.emit('scanStatus', { status: 'completed', deviceCount: seen.size });
+      });
+
     } catch (error: any) {
       log.error('scan() failed', error);
       emitter.emit('scanStatus', { status: 'failed', error: String(error?.message || error) });
+    }
+  },
+
+  async stopScan() {
+    try {
+      if (navigator.bluetooth) {
+        await navigator.bluetooth.stopLEScan();
+      }
+    } catch (error: any) {
+      log.warn('stopScan() failed', error);
     }
   },
   async connect(deviceId: string) {

@@ -64,6 +64,12 @@ export const ipcBLEClient: BLEClient = {
     const ble = (window as any).bleAPI;
     await ble.scan();
   },
+  async stopScan() {
+    const ble = (window as any).bleAPI;
+    if (ble.stopScan) {
+      await ble.stopScan();
+    }
+  },
   async connect(deviceId: string) {
     const ble = (window as any).bleAPI;
     await ble.connect(deviceId);
