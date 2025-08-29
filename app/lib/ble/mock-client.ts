@@ -254,7 +254,7 @@ export const mockBLEClient: BLEClient = {
       emitter.emit('connectionChanged', { deviceId, state: 'disconnected' });
     }, 200);
   },
-  async read(deviceId, serviceId, characteristicId) {
+  async read(deviceId: string, serviceId: string, characteristicId: string) {
     setTimeout(() => {
       // Use realistic data generators for known characteristics
       const generator = mockDataGenerators[characteristicId as keyof typeof mockDataGenerators];
@@ -262,7 +262,7 @@ export const mockBLEClient: BLEClient = {
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'read' });
     }, 200);
   },
-  async write(deviceId, serviceId, characteristicId, data: Uint8Array) {
+  async write(deviceId: string, serviceId: string, characteristicId: string, data: Uint8Array) {
     // echo write outbound event to UI through existing store path; here emit inbound only if subscribed
     const svc = mockConnections[deviceId]?.services?.[serviceId];
     const ch = svc?.characteristics?.[characteristicId];
@@ -282,7 +282,7 @@ export const mockBLEClient: BLEClient = {
       }, 200);
     }
   },
-  async subscribe(deviceId, serviceId, characteristicId) {
+  async subscribe(deviceId: string, serviceId: string, characteristicId: string) {
     const svc = mockConnections[deviceId]?.services?.[serviceId];
     const ch = svc?.characteristics?.[characteristicId];
     if (ch) ch.subscribed = true;
@@ -300,7 +300,7 @@ export const mockBLEClient: BLEClient = {
     (window as any).__mockIntervals = (window as any).__mockIntervals || {};
     (window as any).__mockIntervals[`${deviceId}-${serviceId}-${characteristicId}`] = intervalId;
   },
-  async unsubscribe(deviceId, serviceId, characteristicId) {
+  async unsubscribe(deviceId: string, serviceId: string, characteristicId: string) {
     const svc = mockConnections[deviceId]?.services?.[serviceId];
     const ch = svc?.characteristics?.[characteristicId];
     if (ch) ch.subscribed = false;

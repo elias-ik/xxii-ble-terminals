@@ -823,8 +823,12 @@ export const useBLEStore = create<BLEState>()(
       setupEventListeners: () => {
         // Avoid double-binding in dev HMR
         const w = window as any;
-        if (w.__bleHandlersBound) return;
+        if (w.__bleHandlersBound) {
+          console.log('[BLE Store] Event listeners already bound, skipping setup');
+          return;
+        }
         w.__bleHandlersBound = true;
+        console.log('[BLE Store] Setting up event listeners...');
 
         const { dispatch } = get();
         // Handlers
@@ -1022,7 +1026,12 @@ export const useBLEStore = create<BLEState>()(
       
       cleanupEventListeners: () => {
         const w = window as any;
-        if (!w.__bleHandlersBound || !w.__bleHandlers) return;
+        if (!w.__bleHandlersBound || !w.__bleHandlers) {
+          console.log('[BLE Store] No event listeners to cleanup');
+          return;
+        }
+        console.log('[BLE Store] Cleaning up event listeners...');
+        
         const h = w.__bleHandlers;
         // No standard off for batched; rely on emitter off
         bleClient.off('scanStatus' as any, h.onScanStatus);
@@ -1033,6 +1042,7 @@ export const useBLEStore = create<BLEState>()(
         bleClient.off('characteristicValue' as any, h.onCharacteristicValue);
         delete w.__bleHandlers;
         w.__bleHandlersBound = false;
+        console.log('[BLE Store] Event listeners cleaned up');
       },
       
       // UI per Device actions

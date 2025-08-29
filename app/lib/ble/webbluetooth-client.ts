@@ -45,7 +45,7 @@ const log = {
   error: (...args: any[]) => console.error('[WebBLE]', ...args),
 };
 
-// Diagnostic logging to identify execution environment
+// Diagnostic logging to identify execution environment (only once at module load)
 log.info('Web Bluetooth Client Environment Check:', {
   isRenderer: typeof window !== 'undefined',
   isNode: typeof process !== 'undefined' && process.versions && process.versions.node,
@@ -61,6 +61,15 @@ log.info('Web Bluetooth Client Environment Check:', {
 const subscriptions = new Map<string, () => void>();
 // Cache of discovered devices during scan to avoid re-requesting on connect
 const discoveredDevices = new Map<string, any>();
+
+// Track active scan state to prevent multiple scans
+let isScanning = false;
+let currentScanHandlers: {
+  advertisementHandler?: (event: any) => void;
+  scanStopHandler?: () => void;
+  scanTimeout?: NodeJS.Timeout;
+  idleTimer?: NodeJS.Timeout;
+} = {};
 
 // Lazy-load the webbluetooth Bluetooth constructor once
 let BluetoothCtor: any | null = null;
@@ -152,6 +161,13 @@ export const webBluetoothClient: BLEClient = {
   off: (e, h) => emitter.off(e, h as any),
   async scan() {
     try {
+      // Prevent multiple simultaneous scans
+      if (isScanning) {
+        log.warn('Scan already in progress, ignoring new scan request');
+        return;
+      }
+
+      isScanning = true;
       emitter.emit('scanStatus', { status: 'scanning' });
       
       // Check if Web Bluetooth is available
@@ -165,6 +181,9 @@ export const webBluetoothClient: BLEClient = {
       const idleTimeout = 5000; // 5 seconds of no new devices
       const startedAt = Date.now();
       
+      // Clean up any existing scan handlers
+      cleanupScanHandlers();
+      
       // Clear any existing scan
       try {
         await navigator.bluetooth.stopLEScan();
@@ -172,44 +191,32 @@ export const webBluetoothClient: BLEClient = {
         // Ignore if no scan was running
       }
 
+      const bluetooth = navigator.bluetooth;
+      
       // Set up scan timeout
-      const scanTimeout = setTimeout(() => {
+      currentScanHandlers.scanTimeout = setTimeout(() => {
         try {
-          navigator.bluetooth.stopLEScan();
+          bluetooth.stopLEScan();
         } catch (e) {
           // Ignore
         }
       }, maxScanTime);
 
       // Set up idle timeout
-      const idleTimer = setInterval(() => {
+      currentScanHandlers.idleTimer = setInterval(() => {
         const idleMs = Date.now() - lastFoundAt;
         if (idleMs >= idleTimeout) {
-          clearInterval(idleTimer);
-          clearTimeout(scanTimeout);
+          cleanupScanHandlers();
           try {
-            navigator.bluetooth.stopLEScan();
+            bluetooth.stopLEScan();
           } catch (e) {
             // Ignore
           }
         }
       }, 1000);
 
-      // Start the actual BLE scan
-      if (!navigator.bluetooth) {
-        throw new Error('Web Bluetooth not available');
-      }
-      
-      const bluetooth = navigator.bluetooth;
-      
-      await bluetooth.requestLEScan({
-        acceptAllAdvertisements: true,
-        keepRepeatedDevices: false,
-        scanMode: 'lowLatency'
-      });
-
-      // Listen for advertisement events
-      bluetooth.addEventListener('advertisementreceived', (event) => {
+      // Create event handlers
+      currentScanHandlers.advertisementHandler = (event) => {
         const device = event.device;
         const id = device.id || device.name || String(Math.random());
         
@@ -237,16 +244,28 @@ export const webBluetoothClient: BLEClient = {
             connectionStatus: 'disconnected'
           } as any);
         }
-      });
+      };
 
-      // Listen for scan stop events
-      bluetooth.addEventListener('lescanstop', () => {
-        clearInterval(idleTimer);
-        clearTimeout(scanTimeout);
+      currentScanHandlers.scanStopHandler = () => {
+        cleanupScanHandlers();
+        isScanning = false;
         emitter.emit('scanStatus', { status: 'completed', deviceCount: seen.size });
+      };
+
+      // Add event listeners
+      bluetooth.addEventListener('advertisementreceived', currentScanHandlers.advertisementHandler);
+      bluetooth.addEventListener('lescanstop', currentScanHandlers.scanStopHandler);
+
+      // Start the actual BLE scan
+      await bluetooth.requestLEScan({
+        acceptAllAdvertisements: true,
+        keepRepeatedDevices: false,
+        scanMode: 'lowLatency'
       });
 
     } catch (error: any) {
+      cleanupScanHandlers();
+      isScanning = false;
       log.error('scan() failed', error);
       emitter.emit('scanStatus', { status: 'failed', error: String(error?.message || error) });
     }
@@ -257,6 +276,8 @@ export const webBluetoothClient: BLEClient = {
       if (navigator.bluetooth) {
         await navigator.bluetooth.stopLEScan();
       }
+      cleanupScanHandlers();
+      isScanning = false;
     } catch (error: any) {
       log.warn('stopScan() failed', error);
     }
@@ -483,5 +504,24 @@ export const webBluetoothClient: BLEClient = {
     emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'stopped' });
   }
 };
+
+function cleanupScanHandlers() {
+  if (currentScanHandlers.scanTimeout) {
+    clearTimeout(currentScanHandlers.scanTimeout);
+    currentScanHandlers.scanTimeout = undefined;
+  }
+  if (currentScanHandlers.idleTimer) {
+    clearInterval(currentScanHandlers.idleTimer);
+    currentScanHandlers.idleTimer = undefined;
+  }
+  if (currentScanHandlers.advertisementHandler) {
+    navigator.bluetooth?.removeEventListener('advertisementreceived', currentScanHandlers.advertisementHandler);
+    currentScanHandlers.advertisementHandler = undefined;
+  }
+  if (currentScanHandlers.scanStopHandler) {
+    navigator.bluetooth?.removeEventListener('lescanstop', currentScanHandlers.scanStopHandler);
+    currentScanHandlers.scanStopHandler = undefined;
+  }
+}
 
 

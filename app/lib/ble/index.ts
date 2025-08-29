@@ -21,6 +21,7 @@ export interface BLEClient {
   off<K extends keyof BLEEventMap>(event: K, handler: (payload: BLEEventMap[K]) => void): void;
 
   scan(): Promise<void>;
+  stopScan(): Promise<void>;
   connect(deviceId: string): Promise<void>;
   disconnect(deviceId: string): Promise<void>;
   read(deviceId: string, serviceId: string, characteristicId: string): Promise<void>;
@@ -32,13 +33,20 @@ export interface BLEClient {
 // Storage-style switching: in Electron (main/renderer), prefer real webbluetooth; in plain web, use mock.
 import { mockBLEClient } from './mock-client.ts';
 import { ipcBLEClient } from './ipc-client';
-let impl: BLEClient = mockBLEClient;
+let impl: BLEClient | null;
 try {
   // If running in Electron renderer with preload exposing bleAPI, use IPC client
   if (typeof window !== 'undefined' && (window as any).bleAPI) {
+    console.log('using ipc client, because of window check');
     impl = ipcBLEClient;
+  } else {
+    console.log('using mock client, because of window check');
+    impl = mockBLEClient;
   }
-} catch { }
+} catch { 
+  console.log('using mock client, because of exception');
+  impl = mockBLEClient;
+}
 
 export const bleClient: BLEClient = impl;
 

@@ -33,13 +33,32 @@ export interface BLEClient {
 // Lazy import mock implementation for now; swap here later for real library
 import { mockBLEClient } from './mock-client.ts';
 let impl: BLEClient = mockBLEClient;
+let clientType = 'mock';
+
+console.log('[BLE Client] Starting client selection...');
+
 try {
   // Prefer real WebBluetooth client when available
   if (typeof window !== 'undefined') {
+    console.log('[BLE Client] Window detected, attempting to load Web Bluetooth client...');
     const mod = await import('./webbluetooth-client.ts');
     impl = (mod as { webBluetoothClient: BLEClient }).webBluetoothClient;
+    clientType = 'webbluetooth';
+    console.log('[BLE Client] Successfully loaded Web Bluetooth client');
+  } else {
+    console.log('[BLE Client] No window detected, using mock client');
   }
-} catch {}
+} catch (error) {
+  console.log('[BLE Client] Failed to load Web Bluetooth client, falling back to mock:', error);
+  clientType = 'mock';
+}
+
+console.log('[BLE Client] Final client selection:', {
+  clientType,
+  isRenderer: typeof window !== 'undefined',
+  isNode: typeof process !== 'undefined' && process.versions && process.versions.node,
+  electron: typeof process !== 'undefined' && process.versions && process.versions.electron ? 'Yes' : 'No'
+});
 
 export const bleClient: BLEClient = impl;
 
