@@ -335,19 +335,43 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                             <BookOpen className="h-3 w-3 mr-1" /> Read
                           </Button>
                         )}
-                        <Button size="sm" variant="ghost" aria-label="Remove" onClick={() => {
+                        <Button size="sm" variant="ghost" aria-label="Remove" onClick={async () => {
                           const keyToRemove = key;
-                          const nextReadArr = (deviceUI.selectedReadKeys || []).filter((k: string) => k !== keyToRemove);
-                          const nextNotifyArr = (deviceUI.selectedNotifyKeys || []).filter((k: string) => k !== keyToRemove);
-                          const nextIndicateArr = (deviceUI.selectedIndicateKeys || []).filter((k: string) => k !== keyToRemove);
-                          setDeviceUI(deviceId, { selectedReadKeys: nextReadArr, selectedNotifyKeys: nextNotifyArr, selectedIndicateKeys: nextIndicateArr, ...(writeKey === keyToRemove ? { writeMode: null } : {}) });
-                          // Check if the characteristic will still be subscribed after removal
-                          // If it was in notify/indicate arrays and is being removed, it should be unsubscribed
+                          
+                          // Check if the characteristic needs to be unsubscribed before removing
                           const wasNotifySelected = (deviceUI.selectedNotifyKeys || []).includes(keyToRemove);
                           const wasIndicateSelected = (deviceUI.selectedIndicateKeys || []).includes(keyToRemove);
                           const shouldUnsubscribe = (wasNotifySelected || wasIndicateSelected) && ch.subscribed;
+                          
+                          // Unsubscribe first if needed
                           if (shouldUnsubscribe) {
-                            (useBLEStore.getState() as any).unsubscribe(deviceId, svc.uuid, ch.uuid);
+                            try {
+                              await (useBLEStore.getState() as any).unsubscribe(deviceId, svc.uuid, ch.uuid);
+                            } catch (error) {
+                              console.warn('Failed to unsubscribe during removal:', error);
+                            }
+                          }
+                          
+                          // Update UI state after unsubscribe
+                          const nextReadArr = (deviceUI.selectedReadKeys || []).filter((k: string) => k !== keyToRemove);
+                          const nextNotifyArr = (deviceUI.selectedNotifyKeys || []).filter((k: string) => k !== keyToRemove);
+                          const nextIndicateArr = (deviceUI.selectedIndicateKeys || []).filter((k: string) => k !== keyToRemove);
+                          const isWriteCharacteristic = writeKey === keyToRemove;
+                          
+                          setDeviceUI(deviceId, { 
+                            selectedReadKeys: nextReadArr, 
+                            selectedNotifyKeys: nextNotifyArr, 
+                            selectedIndicateKeys: nextIndicateArr, 
+                            ...(isWriteCharacteristic ? { writeMode: null } : {}) 
+                          });
+                          
+                          // Persist the write selection change if we removed a write characteristic
+                          if (isWriteCharacteristic) {
+                            try {
+                              await (useBLEStore.getState() as any).persistDeviceWriteSelection(deviceId);
+                            } catch (error) {
+                              console.warn('Failed to persist write selection after removal:', error);
+                            }
                           }
                         }}
                         data-testid={ch.name === 'Manufacturer Name'
@@ -426,16 +450,27 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                 <Badge
                                   variant={selectedNotifySet.has(key) ? 'default' : 'secondary'}
                                   className="text-[11px] px-2 py-0.5 cursor-pointer"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     const next = new Set<string>(selectedNotifySet);
                                     const wasSelected = next.has(key);
                                     if (wasSelected) next.delete(key); else next.add(key);
                                     const willBeSubscribed = next.has(key) || selectedIndicateSet.has(key);
+                                    
                                     if (willBeSubscribed && !ch.subscribed) {
-                                      (useBLEStore.getState() as any).subscribe(deviceId, service.uuid, ch.uuid);
+                                      try {
+                                        await (useBLEStore.getState() as any).subscribe(deviceId, service.uuid, ch.uuid);
+                                      } catch (error) {
+                                        console.warn('Failed to subscribe:', error);
+                                        return; // Don't update UI if subscribe failed
+                                      }
                                     }
                                     if (!willBeSubscribed && ch.subscribed) {
-                                      (useBLEStore.getState() as any).unsubscribe(deviceId, service.uuid, ch.uuid);
+                                      try {
+                                        await (useBLEStore.getState() as any).unsubscribe(deviceId, service.uuid, ch.uuid);
+                                      } catch (error) {
+                                        console.warn('Failed to unsubscribe:', error);
+                                        return; // Don't update UI if unsubscribe failed
+                                      }
                                     }
                                     setDeviceUI(deviceId, { selectedNotifyKeys: Array.from(next) as string[] });
                                   }}
@@ -448,16 +483,27 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                 <Badge
                                   variant={selectedIndicateSet.has(key) ? 'default' : 'secondary'}
                                   className="text-[11px] px-2 py-0.5 cursor-pointer"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     const next = new Set<string>(selectedIndicateSet);
                                     const wasSelected = next.has(key);
                                     if (wasSelected) next.delete(key); else next.add(key);
                                     const willBeSubscribed = selectedNotifySet.has(key) || next.has(key);
+                                    
                                     if (willBeSubscribed && !ch.subscribed) {
-                                      (useBLEStore.getState() as any).subscribe(deviceId, service.uuid, ch.uuid);
+                                      try {
+                                        await (useBLEStore.getState() as any).subscribe(deviceId, service.uuid, ch.uuid);
+                                      } catch (error) {
+                                        console.warn('Failed to subscribe:', error);
+                                        return; // Don't update UI if subscribe failed
+                                      }
                                     }
                                     if (!willBeSubscribed && ch.subscribed) {
-                                      (useBLEStore.getState() as any).unsubscribe(deviceId, service.uuid, ch.uuid);
+                                      try {
+                                        await (useBLEStore.getState() as any).unsubscribe(deviceId, service.uuid, ch.uuid);
+                                      } catch (error) {
+                                        console.warn('Failed to unsubscribe:', error);
+                                        return; // Don't update UI if unsubscribe failed
+                                      }
                                     }
                                     setDeviceUI(deviceId, { selectedIndicateKeys: Array.from(next) as string[] });
                                   }}
@@ -469,11 +515,21 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                 <Badge
                                   variant={writeSelected && writeMode === 'write' ? 'default' : 'secondary'}
                                   className="text-[11px] px-2 py-0.5 cursor-pointer"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (writeSelected && writeMode === 'write') {
                                       setDeviceUI(deviceId, { writeMode: null });
+                                      try {
+                                        await (useBLEStore.getState() as any).persistDeviceWriteSelection(deviceId);
+                                      } catch (error) {
+                                        console.warn('Failed to persist write selection:', error);
+                                      }
                                     } else {
                                       setDeviceUI(deviceId, { selectedServiceId: service.uuid, selectedCharacteristicId: ch.uuid, writeMode: 'write' });
+                                      try {
+                                        await (useBLEStore.getState() as any).persistDeviceWriteSelection(deviceId);
+                                      } catch (error) {
+                                        console.warn('Failed to persist write selection:', error);
+                                      }
                                     }
                                   }}
                                 >
@@ -484,11 +540,21 @@ export function TerminalConsole({ deviceId }: TerminalConsoleProps) {
                                 <Badge
                                   variant={writeSelected && writeMode === 'writeNoResp' ? 'default' : 'secondary'}
                                   className="text-[11px] px-2 py-0.5 cursor-pointer"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     if (writeSelected && writeMode === 'writeNoResp') {
                                       setDeviceUI(deviceId, { writeMode: null });
+                                      try {
+                                        await (useBLEStore.getState() as any).persistDeviceWriteSelection(deviceId);
+                                      } catch (error) {
+                                        console.warn('Failed to persist write selection:', error);
+                                      }
                                     } else {
                                       setDeviceUI(deviceId, { selectedServiceId: service.uuid, selectedCharacteristicId: ch.uuid, writeMode: 'writeNoResp' });
+                                      try {
+                                        await (useBLEStore.getState() as any).persistDeviceWriteSelection(deviceId);
+                                      } catch (error) {
+                                        console.warn('Failed to persist write selection:', error);
+                                      }
                                     }
                                   }}
                                   data-testid={ch.uuid === 'custom-char-1' ? 'write-no-resp-custom-char-1' : undefined}

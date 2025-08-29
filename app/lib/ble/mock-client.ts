@@ -281,12 +281,17 @@ export const mockBLEClient: BLEClient = {
     const svc = mockConnections[deviceId]?.services?.[serviceId];
     const ch = svc?.characteristics?.[characteristicId];
     if (ch) ch.subscribed = true;
+    
+    // Emit subscription change event first
     emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'started' });
-    // periodic notifications with realistic data
+    
+    // Set up periodic notifications with realistic data
     const intervalId = setInterval(() => {
       const value = generateNotificationData(characteristicId);
       emitter.emit('characteristicValue', { deviceId, serviceId, characteristicId, value, direction: 'notification' });
     }, 5000);
+    
+    // Store the interval for cleanup
     (window as any).__mockIntervals = (window as any).__mockIntervals || {};
     (window as any).__mockIntervals[`${deviceId}-${serviceId}-${characteristicId}`] = intervalId;
   },
@@ -294,10 +299,17 @@ export const mockBLEClient: BLEClient = {
     const svc = mockConnections[deviceId]?.services?.[serviceId];
     const ch = svc?.characteristics?.[characteristicId];
     if (ch) ch.subscribed = false;
-    emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'stopped' });
+    
+    // Clear the interval first
     const key = `${deviceId}-${serviceId}-${characteristicId}`;
     const map = (window as any).__mockIntervals || {};
-    if (map[key]) { clearInterval(map[key]); delete map[key]; }
+    if (map[key]) { 
+      clearInterval(map[key]); 
+      delete map[key]; 
+    }
+    
+    // Emit subscription change event after cleanup
+    emitter.emit('subscriptionChanged', { deviceId, serviceId, characteristicId, action: 'stopped' });
   }
 };
 
